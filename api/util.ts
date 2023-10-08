@@ -1,3 +1,4 @@
+import { draftURL } from "./api";
 
 export function splitArray<T>(array: T[], size: number): T[][] {
     if (array.length <= size) {
@@ -18,12 +19,8 @@ export function splitArray<T>(array: T[], size: number): T[][] {
     return result;
 }
 
-export async function getSabermetrics(ids: number[]) {
-
-}
-
 export const getAllPlayers = async (): Promise<{}> => {
-    async function getFromYear(year) {
+    async function getFromYear(year:number) {
         const url = `https://statsapi.mlb.com/api/v1/sports/1/players?season=${year}`;
         const raw = await fetch(url);
         const json = await raw.json();
@@ -35,4 +32,28 @@ export const getAllPlayers = async (): Promise<{}> => {
         res[2000 + i] = gfy;
     }
     return res;
+}
+
+export const getAllDraft = async () => {
+    async function getDraftYear(year: number) {
+        const url = draftURL(year);
+        const raw = await fetch(url);
+        const json = await raw.json();
+        return await json["drafts"]["rounds"];
+    }
+    let res = {};
+    for (let i = 0; i < 23; i++) {
+        const gdy = await getDraftYear(2000 + i);
+        res[2000 + i] = gdy;
+    }
+    return res;
+}
+
+export type PlayerDraftInfo = {
+    PLAYER_ID: number,
+    DRAFT_YEAR: number,
+    DRAFT_ROUND: string,
+    DRAFT_POSITION: number,
+    DEBUT_YEAR: number,
+    INTERNATIONAL: boolean
 }

@@ -1,7 +1,8 @@
 export const baseURL: string = "https://statsapi.mlb.com/api/v1/";
 
-export const draftURL = (year: number, playerID: number): string => {
-    return `${baseURL}draft`;
+export const draftURL = (year: number, playerID?: number): string => {
+    const bisPlayerID = playerID ? `?bisPlayerID=${playerID}` : "";
+    return `${baseURL}draft/${year}${bisPlayerID}`;
 }
 
 export const sabermetricsURL = (playerID: number[], year: (string | number)) => {

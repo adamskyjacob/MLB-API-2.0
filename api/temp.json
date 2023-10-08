@@ -1,0 +1,53 @@
+{
+  "bisPlayerId": 185396,
+  "pickRound": "C",
+  "pickNumber": 33,
+  "displayPickNumber": 33,
+  "roundPickNumber": 3,
+  "home": {},
+  "school": { "name": "Long County HS (Ludowici, GA)" },
+  "headshotLink": "https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:silo:current.png/w_120,q_auto:best/v1/people/430661/headshot/draft/current",
+  "person": {
+    "id": 430661,
+    "fullName": "Dustin McGowan",
+    "link": "/api/v1/people/430661",
+    "firstName": "Dustin",
+    "lastName": "McGowan",
+    "primaryNumber": "29",
+    "birthDate": "1982-03-24",
+    "currentAge": 41,
+    "birthCity": "Savannah",
+    "birthStateProvince": "GA",
+    "birthCountry": "USA",
+    "height": "6' 3\"",
+    "weight": 235,
+    "active": false,
+    "primaryPosition": {
+      "code": "1",
+      "name": "Pitcher",
+      "type": "Pitcher",
+      "abbreviation": "P"
+    },
+    "useName": "Dustin",
+    "useLastName": "McGowan",
+    "middleName": "Michael",
+    "boxscoreName": "McGowan, D",
+    "nickName": "D-Mac",
+    "gender": "M",
+    "isPlayer": true,
+    "isVerified": true,
+    "draftYear": 2000,
+    "lastPlayedDate": "2017-10-01",
+    "mlbDebutDate": "2005-07-30",
+    "batSide": {
+      "code": "R",
+      "description": "Right"
+    },
+    "pitchHand": {
+      "code": "R",
+      "description": "Right"
+    },
+    "nameFirstLast": "Dustin McGowan",
+    "nameSlug": "dustin-mcgowan-430661"
+  }
+}

@@ -1,7 +1,7 @@
 
 import { createConnection } from 'mysql';
 
-export const tables: string[] = ["HITTING", "PITCHING", "FIELDING", "ALL_WAR", "DRAFT_INFO", "PLAYER_POSITION"];
+export const tables: string[] = ["HITTING", "PITCHING", "FIELDING", "PITCHING_WAR", "OFFENSIVE_WAR", "DRAFT_INFO", "PLAYER_POSITION"];
 export const tableHeaders = {
     PLAYER_POSITION: [
         {
@@ -27,19 +27,19 @@ export const tableHeaders = {
     DRAFT_INFO: [
         {
             name: "PLAYER_ID",
-            type: "VARCHAR",
-            size: 100,
+            type: "INT",
             nullable: "NOT NULL"
-        } as SQLVarType,
+        } as SQLType,
         {
             name: "DRAFT_YEAR",
             type: "INT",
-            nullable: "NULL"
+            nullable: "NOT NULL"
         } as SQLType,
         {
             name: "DRAFT_ROUND",
-            type: "INT",
-            nullable: "NULL"
+            type: "VARCHAR",
+            size: 20,
+            nullable: "NOT NULL"
         } as SQLType,
         {
             name: "DRAFT_POSITION",
@@ -55,9 +55,27 @@ export const tableHeaders = {
             name: "INTERNATIONAL",
             type: "BOOLEAN",
             nullable: "NOT NULL"
+        } as SQLBasicType,
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    PITCHING_WAR: [
+        {
+            name: "WAR",
+            type: "FLOAT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
         } as SQLType,
     ] as (SQLType | SQLVarType | SQLBasicType)[],
-    ALL_WAR: [
+    OFFENSIVE_WAR: [
         {
             name: "WAR",
             type: "FLOAT",
@@ -75,9 +93,9 @@ export const tableHeaders = {
             nullable: "NOT NULL"
         } as SQLType,
         {
-            name: "POSITIONAL",
-            nullable: "NOT NULL",
-            type: "BOOLEAN"
+            name: "CATCHER",
+            type: "BOOLEAN",
+            nullable: "NOT NULL"
         } as SQLBasicType,
     ] as (SQLType | SQLVarType | SQLBasicType)[],
     HITTING: [
@@ -170,7 +188,10 @@ export type SQLVarType = SQLType & {
 export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQLBasicType | SQLEnum)[], year: boolean) {
     let pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
     if (name == "ALL_WAR") {
-        pkString = pkString.replace(")", "") + `, \`POSITIONAL\`)`;
+        pkString = pkString.replace(")", "") + `, \`POSITION\`)`;
+    }
+    if (name == "DRAFT_INFO") {
+        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`, \`INTERNATIONAL\`)`;
     }
     const attrString = attrs.map(attr => {
         if (attr["vals"]) {
