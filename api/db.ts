@@ -1,6 +1,136 @@
 
 import { createConnection } from 'mysql';
 
+export const tables: string[] = ["HITTING", "PITCHING", "FIELDING", "ALL_WAR", "DRAFT_INFO", "PLAYER_POSITION"];
+export const tableHeaders = {
+    PLAYER_POSITION: [
+        {
+            name: "POSITION",
+            nullable: "NOT NULL",
+            type: "ENUM",
+            vals: [
+                "TWP", "P", "1B", "2B", "3B", "SS", "CF", "LF", "RF", "C", "DH", "OF", "IF", "PH"
+            ]
+        } as SQLEnum,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+    ],
+    DRAFT_INFO: [
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "DRAFT_YEAR",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "DRAFT_ROUND",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "DRAFT_POSITION",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "DEBUT_YEAR",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "INTERNATIONAL",
+            type: "BOOLEAN",
+            nullable: "NOT NULL"
+        } as SQLType,
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ALL_WAR: [
+        {
+            name: "WAR",
+            type: "FLOAT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    HITTING: [
+        {
+            name: "OPS",
+            type: "FLOAT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    PITCHING: [
+        {
+            name: "ERA",
+            type: "FLOAT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    FIELDING: [
+        {
+            name: "FLD_PCT",
+            type: "FLOAT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "PLAYER_ID",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "YEAR_NUM",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType
+    ] as (SQLType | SQLVarType | SQLBasicType)[],
+} as const;
+
 export const dbConnection = createConnection({
     host: "localhost",
     user: "root",
@@ -10,6 +140,11 @@ export const dbConnection = createConnection({
 })
 
 export type SQLBasic = "TINYBLOB" | "TINYTEXT" | "MEDIUMTEXT" | "MEDIUMBLOB" | "LONGTEXT" | "LONGBLOB" | "BOOL" | "BOOLEAN" | "DATE" | "YEAR";
+
+export type SQLEnum = SQLType & {
+    vals: string[],
+    type: "ENUM"
+}
 
 export type SQLBasicType = {
     name: string,
@@ -27,96 +162,18 @@ export type SQLVarType = SQLType & {
     size: number
 }
 
-export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQLBasicType)[], pk: string[]) {
-    const pkStr = pk.map(key => `"${key}"`).join(",");
+export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQLBasicType | SQLEnum)[], year: boolean) {
+    const pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
     const attrString = attrs.map(attr => {
-        return `\`${attr.name}\` ${attr.type}${attr["size"] ? `(${attr["size"]})` : ""} ${attr.nullable}`;
+        if (attr["vals"]) {
+            const valJoin = attr["vals"].map(val => `"${val}"`).join(",");
+            return `\`${attr.name}\` ${attr.type}(${valJoin}) ${attr.nullable}`;
+        }
+        if (attr["size"]) {
+            return `\`${attr.name}\` ${attr.type}(${attr["size"]}) ${attr.nullable}`;
+        }
+        return `\`${attr.name}\` ${attr.type} ${attr.nullable}`;
     }).join(", ");
-    return `CREATE TABLE \`MQP\`.\`${name}\` (${attrString}${pkStr == "" ? "" : `, ${pkStr}`})`;
+    return `CREATE TABLE \`MQP\`.\`${name}\` (${attrString}${pkString})`;
 
-}
-
-const VARSQLTYPE = (name: string, size: number, type: string, nullable: boolean): (SQLVarType | SQLType | SQLBasicType) => {
-    const nullStr = nullable ? "NULL" : "NOT NULL";
-    switch (name) {
-        case "BIT": {
-            if (between(size, 1, 64)) {
-                return {
-                    name: name,
-                    type: type,
-                    size: size,
-                    nullable: nullStr
-                }
-            }
-            throw Error(`Invalid size for type BIT. Size of ${size} is too ${size > 64 ? "big" : "small"}.`);
-        }
-        case "SMALLINT":
-        case "MEDIUMINT":
-        case "BIGINT":
-        case "INT":
-            if (between(size, 0, 255)) {
-                return {
-                    name: name,
-                    type: type,
-                    size: size,
-                    nullable: nullStr
-                }
-            }
-            throw Error(`Invalid size for type ${name}. Size of ${size} is too ${size > 255 ? "big" : "small"}.`);
-        case "BINARY":
-        case "CHAR": {
-            if (between(size, 0, 255)) {
-                return {
-                    name: name,
-                    type: type,
-                    size: size,
-                    nullable: nullStr
-                }
-            }
-            throw Error(`Invalid size for type ${name}. Size of ${size} is too ${size > 255 ? "big" : "small"}.`);
-        }
-        case "BLOB":
-        case "TEXT":
-        case "VARCHAR": {
-            if (between(size, 0, 65535)) {
-                return {
-                    name: name,
-                    type: type,
-                    size: size,
-                    nullable: nullStr
-                }
-            } else {
-                throw Error(`Invalid size for type ${name}. Size of ${size} is too ${size > 255 ? "big" : "small"}.`);
-            }
-        }
-        case "VARBINRAY": {
-            return {
-                name: name,
-                type: type,
-                size: size,
-                nullable: nullStr
-            }
-        }
-        case "FLOAT":
-        case "DOUBLE":
-        case "DOUBLE_PRECISION":
-        case "DEC":
-        case "DECIMAL":
-        case "DATETIME":
-        case "TIMESTAMP":
-        case "TIME": {
-            return {
-                name: name,
-                type: type,
-                nullable: nullStr
-            }
-        }
-        default: {
-            throw Error(`Invalid MySQL column type. ${name} is not a valid type.`);
-        }
-    }
-}
-
-function between(val: number, lower: number, upper: number) {
-    return ((val >= lower) && (val <= upper));
 }
