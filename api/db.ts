@@ -74,6 +74,11 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType,
+        {
+            name: "POSITIONAL",
+            nullable: "NOT NULL",
+            type: "BOOLEAN"
+        } as SQLBasicType,
     ] as (SQLType | SQLVarType | SQLBasicType)[],
     HITTING: [
         {
@@ -95,7 +100,7 @@ export const tableHeaders = {
     ] as (SQLType | SQLVarType | SQLBasicType)[],
     PITCHING: [
         {
-            name: "ERA",
+            name: "ERA_MINUS",
             type: "FLOAT",
             nullable: "NOT NULL"
         } as SQLType,
@@ -163,7 +168,10 @@ export type SQLVarType = SQLType & {
 }
 
 export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQLBasicType | SQLEnum)[], year: boolean) {
-    const pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
+    let pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
+    if (name == "ALL_WAR") {
+        pkString = pkString.replace(")", "") + `, \`POSITIONAL\`)`;
+    }
     const attrString = attrs.map(attr => {
         if (attr["vals"]) {
             const valJoin = attr["vals"].map(val => `"${val}"`).join(",");
