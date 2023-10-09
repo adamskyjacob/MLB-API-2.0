@@ -7,7 +7,7 @@ import { splitArray, getAllPlayers, getAllDraft, PlayerDraftInfo } from './api/u
 
 const baseAPI: string = "/api/v1";
 const app: core.Express = express();
-app.use(express.json());
+app.set('json spaces', 2)
 app.use(cors());
 
 app.listen(8800, async () => {
@@ -21,8 +21,80 @@ app.listen(8800, async () => {
             }
         }
     })
-    await DRAFT_INFO_QUERY();
 });
+
+app.get(`${baseAPI}/draft`, (req, res) => {
+    const { pid, year } = req.query;
+    if (pid) {
+        dbConnection.query(`SELECT * FROM DRAFT_INFO WHERE PLAYER_ID=${pid}`, (err, rows) => {
+            res.json(rows);
+        });
+        return;
+    } else if (year) {
+        dbConnection.query(`SELECT * FROM DRAFT_INFO WHERE DRAFT_YEAR=${year}`, (err, rows) => {
+            res.json(rows);
+        });
+        return;
+    } else {
+        res.status(400).json({
+            error: "API query doesn't include pid. Ensure query is in format /api/v1/draft?pid=NUMBER"
+        });
+    }
+})
+
+app.get(`${baseAPI}/owar`, async (req, res) => {
+    const { pid, year } = req.query;
+    if (pid) {
+        dbConnection.query(`SELECT * FROM OFFENSIVE_WAR WHERE PLAYER_ID=${pid}`, (err, rows) => {
+            if (rows.length == 0) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} in offensive WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else if (year) {
+        dbConnection.query(`SELECT * FROM OFFENSIVE WHERE YEAR_NUM=${year}`, (err, rows) => {
+            if (rows.length == 0) {
+                res.status(400).send({ error: `Couldn't find players from year ${year} in offensive WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else {
+        res.status(400).json({
+            error: "Invalid API query. Ensure query is in format /api/v1/owar?pid=ID or /api/v1/owar?year=YEAR"
+        });
+    }
+})
+
+app.get(`${baseAPI}/pwar`, async (req, res) => {
+    const { pid, year } = req.query;
+    if (pid) {
+        dbConnection.query(`SELECT * FROM PITCHING_WAR WHERE PLAYER_ID=${pid}`, (err, rows) => {
+            if (rows.length == 0) {
+                res.status(400).send({ error: `Couldn't find players from year ${year} in pitching WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else if (year) {
+        dbConnection.query(`SELECT * FROM PITCHING_WAR WHERE YEAR_NUM=${year}`, (err, rows) => {
+            if (rows.length == 0) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} in pitching WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else {
+        res.status(400).json({
+            error: "Invalid API query. Ensure query is in format /api/v1/pwar?pid=ID or /api/v1/pwar?year=YEAR"
+        });
+    }
+})
 
 const DRAFT_INFO_QUERY = async () => {
     const draftPlayers = await getAllDraft();
@@ -42,7 +114,7 @@ const DRAFT_INFO_QUERY = async () => {
                 } as PlayerDraftInfo;
                 if (!Number.isNaN(pdi.PLAYER_ID)) {
                     playerCount++;
-                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID},${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)    
+                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID},${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)
                 }
             }
         }
