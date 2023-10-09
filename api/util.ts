@@ -42,9 +42,9 @@ export const getAllDraft = async () => {
         return await json["drafts"]["rounds"];
     }
     let res = {};
-    for (let i = 0; i < 23; i++) {
-        const gdy = await getDraftYear(2000 + i);
-        res[2000 + i] = gdy;
+    for (let i = 0; i < 43; i++) {
+        const gdy = await getDraftYear(1980 + i);
+        res[1980 + i] = gdy;
     }
     return res;
 }

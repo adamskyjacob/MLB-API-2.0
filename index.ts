@@ -21,6 +21,7 @@ app.listen(8800, async () => {
             }
         }
     })
+    await DRAFT_INFO_QUERY();
 });
 
 const DRAFT_INFO_QUERY = async () => {
@@ -37,11 +38,11 @@ const DRAFT_INFO_QUERY = async () => {
                     DRAFT_ROUND: String(player.pickRound),
                     DRAFT_POSITION: Number(player.roundPickNumber),
                     DEBUT_YEAR: Number(debutDate.substring(0, 4)) ?? 0,
-                    INTERNATIONAL: player.person?.birthCountry != "USA"
+                    INTERNATIONAL: player.person?.birthCountry ? player.person?.birthCountry != "USA" : undefined
                 } as PlayerDraftInfo;
                 if (!Number.isNaN(pdi.PLAYER_ID)) {
                     playerCount++;
-                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID},${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL})`)
+                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID},${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)    
                 }
             }
         }

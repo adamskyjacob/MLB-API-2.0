@@ -54,7 +54,7 @@ export const tableHeaders = {
         {
             name: "INTERNATIONAL",
             type: "BOOLEAN",
-            nullable: "NOT NULL"
+            nullable: "NULL"
         } as SQLBasicType,
     ] as (SQLType | SQLVarType | SQLBasicType)[],
     PITCHING_WAR: [
@@ -191,7 +191,7 @@ export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQ
         pkString = pkString.replace(")", "") + `, \`POSITION\`)`;
     }
     if (name == "DRAFT_INFO") {
-        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`, \`INTERNATIONAL\`)`;
+        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`, \`DRAFT_ROUND\`)`;
     }
     const attrString = attrs.map(attr => {
         if (attr["vals"]) {
