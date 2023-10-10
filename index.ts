@@ -7,6 +7,7 @@ import { splitArray, getAllPlayers, getAllDraft, PlayerDraftInfo } from './api/u
 
 const baseAPI: string = "/api/v1";
 const app: core.Express = express();
+
 app.set('json spaces', 2)
 app.use(cors());
 
@@ -25,13 +26,27 @@ app.listen(8800, async () => {
 
 app.get(`${baseAPI}/draft`, (req, res) => {
     const { pid, year } = req.query;
-    if (pid) {
+    if (pid && year) {
+        dbConnection.query(`SELECT * FROM DRAFT_INFO WHERE PLAYER_ID=${pid} AND YEAR_NUM=${year}`, (err, rows) => {
+            if (err) {
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else if (pid) {
         dbConnection.query(`SELECT * FROM DRAFT_INFO WHERE PLAYER_ID=${pid}`, (err, rows) => {
+            if (err) {
+                return;
+            }
             res.json(rows);
         });
         return;
     } else if (year) {
         dbConnection.query(`SELECT * FROM DRAFT_INFO WHERE DRAFT_YEAR=${year}`, (err, rows) => {
+            if (err) {
+                return;
+            }
             res.json(rows);
         });
         return;
@@ -42,11 +57,50 @@ app.get(`${baseAPI}/draft`, (req, res) => {
     }
 })
 
+app.get(`${baseAPI}/bothwar`, async (req, res) => {
+    const { pid, year } = req.query;
+    if (pid && year) {
+        dbConnection.query("SELECT OFFENSIVE_WAR.WAR AS OWAR, PITCHING_WAR.WAR as PWAR, PITCHING_WAR.PLAYER_ID as PPLAYER_ID, OFFENSIVE_WAR.PLAYER_ID as OPLAYER_ID, PITCHING_WAR.YEAR_NUM as PYEAR_NUM, OFFENSIVE_WAR.YEAR_NUM as OYEAR_NUM FROM OFFENSIVE_WAR LEFT JOIN PITCHING_WAR ON (OFFENSIVE_WAR.PLAYER_ID = PITCHING_WAR.PLAYER_ID AND OFFENSIVE_WAR.YEAR_NUM = PITCHING_WAR.YEAR_NUM);", (err, rows) => {
+            if (err) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} and YEAR: ${year} in both WAR.` });
+            }
+            res.json(rows.map(row => { return { OWAR: row.OWAR, PWAR: row.PWAR, PLAYER_ID: row.OPLAYER_ID ?? row.PPLAYER_ID, YEAR_NUM: row.PYEARNUM ?? row.OYEAR_NUM } }).filter(row => (row.YEAR_NUM == year && row.PLAYER_ID == pid)));
+        })
+    } else if (year) {
+        dbConnection.query("SELECT OFFENSIVE_WAR.WAR AS OWAR, PITCHING_WAR.WAR as PWAR, PITCHING_WAR.PLAYER_ID as PPLAYER_ID, OFFENSIVE_WAR.PLAYER_ID as OPLAYER_ID, PITCHING_WAR.YEAR_NUM as PYEAR_NUM, OFFENSIVE_WAR.YEAR_NUM as OYEAR_NUM FROM OFFENSIVE_WAR LEFT JOIN PITCHING_WAR ON (OFFENSIVE_WAR.PLAYER_ID = PITCHING_WAR.PLAYER_ID AND OFFENSIVE_WAR.YEAR_NUM = PITCHING_WAR.YEAR_NUM);", (err, rows) => {
+            if (err) {
+                res.status(400).send({ error: `Couldn't find player with YEAR: ${year} in both WAR.` });
+            }
+            res.json(rows.map(row => { return { OWAR: row.OWAR, PWAR: row.PWAR, PLAYER_ID: row.OPLAYER_ID ?? row.PPLAYER_ID, YEAR_NUM: row.PYEARNUM ?? row.OYEAR_NUM } }).filter(row => row.YEAR_NUM == year));
+        })
+    } else if (pid) {
+        dbConnection.query("SELECT OFFENSIVE_WAR.WAR AS OWAR, PITCHING_WAR.WAR as PWAR, PITCHING_WAR.PLAYER_ID as PPLAYER_ID, OFFENSIVE_WAR.PLAYER_ID as OPLAYER_ID, PITCHING_WAR.YEAR_NUM as PYEAR_NUM, OFFENSIVE_WAR.YEAR_NUM as OYEAR_NUM FROM OFFENSIVE_WAR LEFT JOIN PITCHING_WAR ON (OFFENSIVE_WAR.PLAYER_ID = PITCHING_WAR.PLAYER_ID AND OFFENSIVE_WAR.YEAR_NUM = PITCHING_WAR.YEAR_NUM);", (err, rows) => {
+            if (err) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} in both WAR.` });
+            }
+            res.json(rows.map(row => { return { OWAR: row.OWAR, PWAR: row.PWAR, PLAYER_ID: row.OPLAYER_ID ?? row.PPLAYER_ID, YEAR_NUM: row.PYEARNUM ?? row.OYEAR_NUM } }).filter(row => row.PLAYER_ID == pid));
+        })
+    } else {
+        res.status(400).json({
+            error: "Invalid API query. Ensure query is in format /api/v1/bothwar?pid=ID, /api/v1/bothwar?year=YEAR or /api/v1/bothwar?year=YEAR&pid=ID."
+        });
+    }
+})
+
 app.get(`${baseAPI}/owar`, async (req, res) => {
     const { pid, year } = req.query;
-    if (pid) {
+    if (pid && year) {
+        dbConnection.query(`SELECT * FROM OFFENSIVE_WAR WHERE PLAYER_ID=${pid} AND YEAR_NUM=${year}`, (err, rows) => {
+            if (rows.length == 0 || err) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} and YEAR: ${year} in offensive WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else if (pid) {
         dbConnection.query(`SELECT * FROM OFFENSIVE_WAR WHERE PLAYER_ID=${pid}`, (err, rows) => {
-            if (rows.length == 0) {
+            if (rows.length == 0 || err) {
                 res.status(400).send({ error: `Couldn't find player with ID: ${pid} in offensive WAR.` });
                 return;
             }
@@ -55,7 +109,7 @@ app.get(`${baseAPI}/owar`, async (req, res) => {
         return;
     } else if (year) {
         dbConnection.query(`SELECT * FROM OFFENSIVE WHERE YEAR_NUM=${year}`, (err, rows) => {
-            if (rows.length == 0) {
+            if (rows.length == 0 || err) {
                 res.status(400).send({ error: `Couldn't find players from year ${year} in offensive WAR.` });
                 return;
             }
@@ -64,17 +118,26 @@ app.get(`${baseAPI}/owar`, async (req, res) => {
         return;
     } else {
         res.status(400).json({
-            error: "Invalid API query. Ensure query is in format /api/v1/owar?pid=ID or /api/v1/owar?year=YEAR"
+            error: "Invalid API query. Ensure query is in format /api/v1/owar?pid=ID, /api/v1/owar?year=YEAR or /api/v1/owar?year=YEAR&pid=ID."
         });
     }
 })
 
 app.get(`${baseAPI}/pwar`, async (req, res) => {
     const { pid, year } = req.query;
-    if (pid) {
+    if (pid && year) {
+        dbConnection.query(`SELECT * FROM PITCHING_WAR WHERE PLAYER_ID=${pid} AND YEAR_NUM=${year}`, (err, rows) => {
+            if (rows.length == 0 || err) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} and YEAR: ${year} in pitching WAR.` });
+                return;
+            }
+            res.json(rows);
+        });
+        return;
+    } else if (pid) {
         dbConnection.query(`SELECT * FROM PITCHING_WAR WHERE PLAYER_ID=${pid}`, (err, rows) => {
-            if (rows.length == 0) {
-                res.status(400).send({ error: `Couldn't find players from year ${year} in pitching WAR.` });
+            if (rows.length == 0 || err) {
+                res.status(400).send({ error: `Couldn't find player with ID: ${pid} in pitching WAR.` });
                 return;
             }
             res.json(rows);
@@ -82,8 +145,8 @@ app.get(`${baseAPI}/pwar`, async (req, res) => {
         return;
     } else if (year) {
         dbConnection.query(`SELECT * FROM PITCHING_WAR WHERE YEAR_NUM=${year}`, (err, rows) => {
-            if (rows.length == 0) {
-                res.status(400).send({ error: `Couldn't find player with ID: ${pid} in pitching WAR.` });
+            if (rows.length == 0 || err) {
+                res.status(400).send({ error: `Couldn't find players from year ${year} in pitching WAR.` });
                 return;
             }
             res.json(rows);
@@ -91,7 +154,7 @@ app.get(`${baseAPI}/pwar`, async (req, res) => {
         return;
     } else {
         res.status(400).json({
-            error: "Invalid API query. Ensure query is in format /api/v1/pwar?pid=ID or /api/v1/pwar?year=YEAR"
+            error: "Invalid API query. Ensure query is in format /api/v1/pwar?pid=ID, /api/v1/pwar?year=YEAR or /api/v1/pwar?year=YEAR&pid=ID."
         });
     }
 })
