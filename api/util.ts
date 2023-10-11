@@ -51,6 +51,8 @@ export const getAllDraft = async () => {
 
 export type PlayerDraftInfo = {
     PLAYER_ID: number,
+    FIRST_NAME: string,
+    LAST_NAME: string,
     DRAFT_YEAR: number,
     DRAFT_ROUND: string,
     DRAFT_POSITION: number,

@@ -31,6 +31,18 @@ export const tableHeaders = {
             nullable: "NOT NULL"
         } as SQLType,
         {
+            name: "FIRST_NAME",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "LAST_NAME",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
             name: "DRAFT_YEAR",
             type: "INT",
             nullable: "NOT NULL"
@@ -40,7 +52,7 @@ export const tableHeaders = {
             type: "VARCHAR",
             size: 20,
             nullable: "NOT NULL"
-        } as SQLType,
+        } as SQLVarType,
         {
             name: "DRAFT_POSITION",
             type: "INT",
@@ -159,7 +171,7 @@ export const dbConnection = createConnection({
     user: "root",
     password: "password",
     port: 3306,
-    database: "MQP"
+    database: "mqp"
 })
 
 export type SQLBasic = "TINYBLOB" | "TINYTEXT" | "MEDIUMTEXT" | "MEDIUMBLOB" | "LONGTEXT" | "LONGBLOB" | "BOOL" | "BOOLEAN" | "DATE" | "YEAR";

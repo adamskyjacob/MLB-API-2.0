@@ -13,7 +13,10 @@ app.use(cors());
 
 app.listen(8800, async () => {
     dbConnection.query("SHOW TABLES", (err, res) => {
-        const dbTables: string[] = res.map(val => val["Tables_in_mqp"]) as string[];
+        if (err) {
+            throw err;
+        }
+        const dbTables: string[] = res.map(val => (val["Tables_in_mqp"] as string).toUpperCase()) as string[];
         for (var table of tables) {
             if (!dbTables.includes(table)) {
                 const containsYear = tableHeaders[table].map(attr => attr.name).includes("YEAR_NUM");
@@ -21,7 +24,7 @@ app.listen(8800, async () => {
                 dbConnection.query(query);
             }
         }
-    })
+    });
 });
 
 app.get(`${baseAPI}/draft`, (req, res) => {
@@ -159,6 +162,40 @@ app.get(`${baseAPI}/pwar`, async (req, res) => {
     }
 })
 
+app.get(`${baseAPI}/search`, async (req, res) => {
+    const { first, last, intl, year} = req.query;
+    let query = "";
+
+    if (first) {
+        query += `WHERE FIRST_NAME="${first}"`;
+    }
+    if (last) {
+        query += ` ${(first) ? "AND" : "WHERE"} LAST_NAME="${last}"`
+    }
+    if (intl) {
+        query += ` ${(first || last) ? "AND " : "WHERE "}INTERNATIONAL=${intl === "true" ? 1 : 0}`;
+    }
+    if (year) {
+        query += ` ${(first || last || intl) ? "AND " : "WHERE "}DEBUT_YEAR=${year}`;
+    }
+
+    dbConnection.query(`SELECT PLAYER_ID, FIRST_NAME, LAST_NAME, DEBUT_YEAR, INTERNATIONAL FROM DRAFT_INFO ${query} GROUP BY PLAYER_ID;`, (err, result) => {
+        if (err) {
+            res.status(400).send(err.code);
+            return;
+        }
+        res.json(result.map(player => {
+            return {
+                PLAYER_ID: player.PLAYER_ID,
+                FIRST_NAME: player.FIRST_NAME,
+                LAST_NAME: player.LAST_NAME,
+                DEBUT_YEAR: player.DEBUT_YEAR == 0 ? "NO DEBUT" : player.DEBUT_YEAR,
+                INTERNATIONAL: player.INTERNATIONAL,
+            }
+        }))
+    })
+})
+
 const DRAFT_INFO_QUERY = async () => {
     const draftPlayers = await getAllDraft();
     let playerCount = 0;
@@ -169,6 +206,8 @@ const DRAFT_INFO_QUERY = async () => {
                 const debutDate: string = player.person?.mlbDebutDate ?? "";
                 let pdi = {
                     PLAYER_ID: Number(player.person?.id),
+                    FIRST_NAME: player.person?.firstName,
+                    LAST_NAME: player.person?.lastName,
                     DRAFT_YEAR: Number(key),
                     DRAFT_ROUND: String(player.pickRound),
                     DRAFT_POSITION: Number(player.roundPickNumber),
@@ -177,7 +216,7 @@ const DRAFT_INFO_QUERY = async () => {
                 } as PlayerDraftInfo;
                 if (!Number.isNaN(pdi.PLAYER_ID)) {
                     playerCount++;
-                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID},${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)
+                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, FIRST_NAME, LAST_NAME, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID}, "${pdi.FIRST_NAME}", "${pdi.LAST_NAME}",${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)
                 }
             }
         }
@@ -256,15 +295,17 @@ const STATS_QUERY = async () => {
 }
 
 const PLAYER_POSITION_QUERY = async () => {
+    let count = 0;
     for (let i = 0; i < 23; i++) {
         const yearlyPlayers = await fetch(`${baseURL}sports/1/players?season=${2000 + i}`);
         const json = await yearlyPlayers.json();
         for (var player of json["people"]) {
+            count++;
             const pos = player["primaryPosition"]["abbreviation"];
             const id = player["id"];
             const playerInfo = `('${pos}', ${id}, ${2000 + i})`;
             dbConnection.query(`INSERT INTO PLAYER_POSITION (POSITION, PLAYER_ID, YEAR_NUM) VALUES ${playerInfo}`);
         }
     }
-    console.log("Finished adding player positional information to the database!");
+    console.log(`Finished adding player positional information to the database! (${count} players)`);
 }
