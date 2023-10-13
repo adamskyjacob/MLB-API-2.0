@@ -1,7 +1,9 @@
 
 import { createConnection } from 'mysql';
+import { SQLBasicType, SQLEnum, SQLType, SQLTypeArray, SQLVarType } from './types';
 
 export const tables: string[] = ["HITTING", "PITCHING", "FIELDING", "PITCHING_WAR", "OFFENSIVE_WAR", "DRAFT_INFO", "PLAYER_POSITION"];
+
 export const tableHeaders = {
     PLAYER_POSITION: [
         {
@@ -23,7 +25,7 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType,
-    ],
+    ] as SQLTypeArray,
     DRAFT_INFO: [
         {
             name: "PLAYER_ID",
@@ -68,7 +70,7 @@ export const tableHeaders = {
             type: "BOOLEAN",
             nullable: "NULL"
         } as SQLBasicType,
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
     PITCHING_WAR: [
         {
             name: "WAR",
@@ -86,7 +88,7 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType,
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
     OFFENSIVE_WAR: [
         {
             name: "WAR",
@@ -109,7 +111,7 @@ export const tableHeaders = {
             type: "BOOLEAN",
             nullable: "NOT NULL"
         } as SQLBasicType,
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
     HITTING: [
         {
             name: "OPS",
@@ -127,7 +129,7 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
     PITCHING: [
         {
             name: "ERA_MINUS",
@@ -145,7 +147,7 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
     FIELDING: [
         {
             name: "FLD_PCT",
@@ -163,7 +165,7 @@ export const tableHeaders = {
             type: "INT",
             nullable: "NOT NULL"
         } as SQLType
-    ] as (SQLType | SQLVarType | SQLBasicType)[],
+    ] as SQLTypeArray,
 } as const;
 
 export const dbConnection = createConnection({
@@ -172,49 +174,4 @@ export const dbConnection = createConnection({
     password: "password",
     port: 3306,
     database: "mqp"
-})
-
-export type SQLBasic = "TINYBLOB" | "TINYTEXT" | "MEDIUMTEXT" | "MEDIUMBLOB" | "LONGTEXT" | "LONGBLOB" | "BOOL" | "BOOLEAN" | "DATE" | "YEAR";
-
-export type SQLEnum = SQLType & {
-    vals: string[],
-    type: "ENUM"
-}
-
-export type SQLBasicType = {
-    name: string,
-    type: SQLBasic,
-    nullable: "NULL" | "NOT NULL"
-}
-
-export type SQLType = {
-    name: string,
-    type: string,
-    nullable: "NULL" | "NOT NULL"
-}
-
-export type SQLVarType = SQLType & {
-    size: number
-}
-
-export function createTableQuery(name: string, attrs: (SQLType | SQLVarType | SQLBasicType | SQLEnum)[], year: boolean) {
-    let pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
-    if (name == "ALL_WAR") {
-        pkString = pkString.replace(")", "") + `, \`POSITION\`)`;
-    }
-    if (name == "DRAFT_INFO") {
-        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`, \`DRAFT_ROUND\`)`;
-    }
-    const attrString = attrs.map(attr => {
-        if (attr["vals"]) {
-            const valJoin = attr["vals"].map(val => `"${val}"`).join(",");
-            return `\`${attr.name}\` ${attr.type}(${valJoin}) ${attr.nullable}`;
-        }
-        if (attr["size"]) {
-            return `\`${attr.name}\` ${attr.type}(${attr["size"]}) ${attr.nullable}`;
-        }
-        return `\`${attr.name}\` ${attr.type} ${attr.nullable}`;
-    }).join(", ");
-    return `CREATE TABLE \`MQP\`.\`${name}\` (${attrString}${pkString})`;
-
-}
+});

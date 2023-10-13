@@ -1,8 +1,9 @@
 {
   "ExpandedNodes": [
     "",
-    "\\api"
+    "\\api",
+    "\\test"
   ],
-  "SelectedNode": "\\api\\api.ts",
+  "SelectedNode": "\\test\\testparams.ts",
   "PreviewInSolutionExplorer": false
 }
