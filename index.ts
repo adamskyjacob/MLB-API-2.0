@@ -26,24 +26,13 @@ function processRows(rows: any, res: Response, err: MysqlError) {
 function getAndProcessData(req: Request, res: Response, query: string, bothwar: boolean) {
     const { pid, year } = req.query;
     let params = [];
-    if (!bothwar) {
-        if (pid) {
-            query += ` WHERE ${bothwar ? "P." : ""}PLAYER_ID=?`;
-            params.push(pid);
-        }
-        if (year) {
-            query += `${pid ? " AND" : " WHERE"} ${bothwar ? "PW." : ""}YEAR_NUM=?`;
-            params.push(year);
-        }
-    } else {
-        if (pid) {
-            query += ` WHERE OP_JOIN.PLAYER_ID=?`;
-            params.push(pid);
-        }
-        if (year) {
-            query += `${pid ? " AND" : " WHERE"} OP_JOIN.YEAR_NUM=?`;
-            params.push(year);
-        }
+    if (pid) {
+        query += ` WHERE ${bothwar ? "OP_JOIN." : ""}PLAYER_ID=?`;
+        params.push(pid);
+    }
+    if (year) {
+        query += `${pid ? " AND" : " WHERE"} ${bothwar ? "OP_JOIN." : ""}YEAR_NUM=?`;
+        params.push(year);
     }
 
     dbConnection.query(query, params, (err, rows) => {
