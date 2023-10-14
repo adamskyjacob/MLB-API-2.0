@@ -1,6 +1,7 @@
-import { TestParameter, validatePlayerIDParameters, validateYearParameters, colorStringParameters, splitArrayParameters } from "./testparams";
+import { TestParameter, validatePlayerIDParameters, validateYearParameters, colorStringParameters, splitArrayParameters, createTableQueryParameters } from "./testparams";
 import { validatePlayerID, validateYear } from "../api/validation";
-import { colorString, splitArray } from "../api/util";
+import { colorString, createTableQuery, splitArray } from "../api/util";
+import lodash from "lodash";
 
 export default class Test {
     static runAllTests() {
@@ -8,6 +9,7 @@ export default class Test {
         Test.validateFunction("validateYear", validateYear, validateYearParameters);
         Test.validateFunction("colorString", colorString, colorStringParameters);
         Test.validateFunction("splitArray", splitArray, splitArrayParameters);
+        Test.validateFunction("createTableQuery", createTableQuery, createTableQueryParameters);
     }
 
     static validateFunction(name: string, funcToTest: Function, testParams: TestParameter[]) {
@@ -29,27 +31,10 @@ export default class Test {
 
             let result = funcToTest(...param.value);
             if (result instanceof Array && result[0] instanceof Array) {
-                log(Test.checkSplitEqual(splitArray(param.value[0], param.value[1]), param.expected));
+                log(lodash.isEqual(splitArray(param.value[0], param.value[1]), param.expected));
             } else {
                 log(result == param.expected);
             }
         }
-    }
-
-    static checkSplitEqual<T>(first: T[][], second: T[][]): boolean {
-        if (first.length != second.length) {
-            return false;
-        }
-        for (let i = 0; i < first.length; i++) {
-            if (first[i].length != second[i].length) {
-                return false;
-            }
-            for (let j = 0; j < first[i].length; j++) {
-                if (first[i][j] != second[i][j]) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 }

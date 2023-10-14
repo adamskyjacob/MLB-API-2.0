@@ -1,12 +1,6 @@
-type BMLArray<
-    T,
-    N extends number,
-    Current extends T[]
-> = Current['length'] extends N
-    ? [...Current, ...T[]]
-    : BMLArray<T, N, [...Current, T]>;
-
+type BMLArray<T, N extends number, Current extends T[] > = Current['length'] extends N ? [...Current, ...T[]] : BMLArray<T, N, [...Current, T]>;
 export type MLArray<T, N extends number> = BMLArray<T, N, []>;
+
 type PlayerDraftInfo = {
     PLAYER_ID: number,
     FIRST_NAME: string,

@@ -1,10 +1,138 @@
-import { MLArray } from "../api/types";
+import { tableHeaders } from "../api/db";
+import { MLArray, SQLBasicType, SQLEnum, SQLType, SQLTypeArray, SQLVarType } from "../api/types";
 
 export interface TestParameter {
     value: any,
     expected: any,
     match: boolean
 }
+
+const createTableQueryGenerated: TestParameter[] = Object.keys(tableHeaders).map(header => {
+    function getQueryFromName(name: string) {
+        switch (name) {
+            case 'HITTING': {
+                return 'CREATE TABLE `MQP`.`HITTING` (`OPS` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+            case 'PITCHING': {
+                return 'CREATE TABLE `MQP`.`PITCHING` (`ERA_MINUS` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+            case 'FIELDING': {
+                return 'CREATE TABLE `MQP`.`FIELDING` (`FLD_PCT` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+            case 'OFFENSIVE_WAR': {
+                return 'CREATE TABLE `MQP`.`OFFENSIVE_WAR` (`WAR` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, `CATCHER` BOOLEAN NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+            case 'PITCHING_WAR': {
+                return 'CREATE TABLE `MQP`.`PITCHING_WAR` (`WAR` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+            case 'DRAFT_INFO': {
+                return 'CREATE TABLE `MQP`.`DRAFT_INFO` (`PLAYER_ID` INT NOT NULL, `FIRST_NAME` VARCHAR(100) NOT NULL, `LAST_NAME` VARCHAR(100) NOT NULL, `DRAFT_YEAR` INT NOT NULL, `DRAFT_ROUND` VARCHAR(20) NOT NULL, `DRAFT_POSITION` INT NULL, `DEBUT_YEAR` INT NULL, `INTERNATIONAL` BOOLEAN NULL, PRIMARY KEY (`PLAYER_ID`, `DRAFT_YEAR`, `DRAFT_ROUND`))';
+            }
+            case 'PLAYER_POSITION': {
+                return 'CREATE TABLE `MQP`.`PLAYER_POSITION` (`POSITION` ENUM("TWP","P","1B","2B","3B","SS","CF","LF","RF","C","DH","OF","IF","PH") NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            }
+        }
+    }
+    let body = tableHeaders[header] as SQLTypeArray;
+    const paramMapping: TestParameter = {
+        value: [header, body, body.filter(val => val["name"] == "YEAR_NUM").length == 1],
+        expected: getQueryFromName(header),
+        match: true
+    }
+    return paramMapping;
+})
+
+export const createTableQueryParameters: TestParameter[] = createTableQueryGenerated.concat(
+    [
+        {
+            value: [
+                "TEST",
+                [
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "BOOLEAN"
+                    } as SQLBasicType,
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "VARCHAR",
+                        size: 50
+                    } as SQLVarType,
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "ENUM",
+                        vals: ["TEST", "TEST2", "TEST3"]
+                    } as SQLEnum
+                ] as SQLTypeArray,
+                true
+            ],
+            expected: "OP$Y@()( @()YJ$ EJWG(G() GW",
+            match: false
+        } as TestParameter,
+        {
+            value: [
+                "WEIRD",
+                [
+                    {
+                        name: "WORD",
+                        nullable: "NOT NULL",
+                        type: "TINYTEXT"
+                    } as SQLBasicType,
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "VARCHAR",
+                        size: 100
+                    } as SQLVarType,
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "ENUM",
+                        vals: ["ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZ"]
+                    } as SQLEnum
+                ] as SQLTypeArray,
+                true
+            ],
+            expected: 'CREATE TABLE `MQP`.`WEIRD` (`WORD` TINYTEXT NOT NULL, `BLAH` VARCHAR(100) NOT NULL, `BLAH` ENUM("ABC","DEF","GHI","JKL","MNO","PQR","STU","VWX","YZ") NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))',
+            match: true
+        } as TestParameter,
+        {
+            value: [
+                "WEIRD",
+                [
+                    {
+                        name: "WORD",
+                        nullable: "NOT NULL",
+                        type: "TINYTEXT"
+                    } as SQLBasicType,
+                    {
+                        name: "BLAH",
+                        nullable: "NOT NULL",
+                        type: "VARCHAR",
+                        size: 100
+                    } as SQLVarType,
+                    {
+                        name: "SFHSH",
+                        nullable: "NOT NULL",
+                        type: "ENUM",
+                        vals: ["ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZ"]
+                    } as SQLEnum,
+                    {
+                        name: "REEAGEAG",
+                        nullable: "NOT NULL",
+                        type: "ENUM",
+                        vals: [",452qee", "46413tqd", "6234rgsd", "0asfh9"]
+                    } as SQLEnum
+                ] as SQLTypeArray,
+                true
+            ],
+            expected: "opjerh joqhj-0 yh24hfdj- hwj-35h20erdf s",
+            match: false
+        } as TestParameter
+    ] as TestParameter[]
+)
 
 export const colorStringParameters: MLArray<TestParameter, 8> = [
     {

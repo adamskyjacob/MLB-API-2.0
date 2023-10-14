@@ -5,7 +5,7 @@ export const draftURL = (year: number, playerID?: number): string => {
     return `${baseURL}draft/${year}${bisPlayerID}`;
 }
 
-export const sabermetricsURL = (playerID: number[], year: (string | number)) => {
+export const sabermetricsURL = (playerID: number[], year: number) => {
     const url = `${baseURL}people?personIds=${playerID.join(",")}&hydrate=stats(group=[pitching,hitting,fielding],type=[season,sabermetrics],season=${year})`;
     return url;
 }

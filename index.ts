@@ -13,7 +13,7 @@ const app: core.Express = express();
 
 function processRows(rows: any, res: Response, err: MysqlError) {
     if (err) {
-        res.status(400).send(err.code);
+        res.status(400).send(err);
         return
     }
     if (rows.length == 0) {
@@ -26,14 +26,24 @@ function processRows(rows: any, res: Response, err: MysqlError) {
 function getAndProcessData(req: Request, res: Response, query: string, bothwar: boolean) {
     const { pid, year } = req.query;
     let params = [];
-
-    if (pid) {
-        query += ` WHERE ${bothwar ? "PW." : ""}PLAYER_ID=?`;
-        params.push(pid);
-    }
-    if (year) {
-        query += pid ? ` AND ${bothwar ? "PW." : ""}YEAR_NUM=?` : ` WHERE ${bothwar ? "PW." : ""}YEAR_NUM=?`
-        params.push(year);
+    if (!bothwar) {
+        if (pid) {
+            query += ` WHERE ${bothwar ? "P." : ""}PLAYER_ID=?`;
+            params.push(pid);
+        }
+        if (year) {
+            query += `${pid ? " AND" : " WHERE"} ${bothwar ? "PW." : ""}YEAR_NUM=?`;
+            params.push(year);
+        }
+    } else {
+        if (pid) {
+            query += ` WHERE OP_JOIN.PLAYER_ID=?`;
+            params.push(pid);
+        }
+        if (year) {
+            query += `${pid ? " AND" : " WHERE"} OP_JOIN.YEAR_NUM=?`;
+            params.push(year);
+        }
     }
 
     dbConnection.query(query, params, (err, rows) => {
@@ -66,7 +76,10 @@ app.get(`${baseAPI}/draft`, (req, res) => {
 })
 
 app.get(`${baseAPI}/bothwar`, async (req, res) => {
-    getAndProcessData(req, res, "SELECT PW.WAR as PWAR, OW.WAR as OWAR, PW.YEAR_NUM as YEAR_NUM, PW.PLAYER_ID as PLAYER_ID FROM PITCHING_WAR as PW INNER JOIN OFFENSIVE_WAR as OW ON (OW.YEAR_NUM=PW.YEAR_NUM AND OW.PLAYER_ID=PW.PLAYER_ID)", true);
+    const getLeftOrRight = (lr: "LEFT" | "RIGHT") => {
+        return `SELECT COALESCE(P.PLAYER_ID, O.PLAYER_ID) AS PLAYER_ID, COALESCE(P.YEAR_NUM, O.YEAR_NUM) AS YEAR_NUM, COALESCE(O.WAR, 0) AS OWAR, COALESCE(P.WAR, 0) AS PWAR FROM PITCHING_WAR P ${lr} JOIN OFFENSIVE_WAR O ON P.PLAYER_ID = O.PLAYER_ID AND P.YEAR_NUM = O.YEAR_NUM`
+    }
+    getAndProcessData(req, res, `SELECT * FROM (${getLeftOrRight("LEFT")} UNION ${getLeftOrRight("RIGHT")}) AS OP_JOIN`, true);
 })
 
 app.get(`${baseAPI}/owar`, async (req, res) => {
@@ -75,6 +88,10 @@ app.get(`${baseAPI}/owar`, async (req, res) => {
 
 app.get(`${baseAPI}/pwar`, async (req, res) => {
     getAndProcessData(req, res, "SELECT * FROM PITCHING_WAR", false);
+})
+
+app.get(`${baseAPI}/pitching`, async (req, res) => {
+    getAndProcessData(req, res, "SELECT * FROM PITCHING", false)
 })
 
 app.get(`${baseAPI}/search`, async (req, res) => {
@@ -94,7 +111,7 @@ app.get(`${baseAPI}/search`, async (req, res) => {
         query += ` ${(first || last || intl) ? "AND " : "WHERE "}DEBUT_YEAR=${year}`;
     }
 
-    dbConnection.query(`SELECT PLAYER_ID, FIRST_NAME, LAST_NAME, DEBUT_YEAR, INTERNATIONAL FROM DRAFT_INFO ${query} GROUP BY PLAYER_ID;`, (err, result) => {
+    dbConnection.query(`SELECT PLAYER_ID, FIRST_NAME, LAST_NAME, CASE WHEN DEBUT_YEAR=0 THEN "NO DEBUT" ELSE DEBUT_YEAR END AS DEBUT, INTERNATIONAL FROM DRAFT_INFO ${query} GROUP BY PLAYER_ID;`, (err, result) => {
         if (err) {
             res.status(400).send(err.code);
             return;
@@ -104,7 +121,7 @@ app.get(`${baseAPI}/search`, async (req, res) => {
                 PLAYER_ID: player.PLAYER_ID,
                 FIRST_NAME: player.FIRST_NAME,
                 LAST_NAME: player.LAST_NAME,
-                DEBUT_YEAR: player.DEBUT_YEAR == 0 ? "NO DEBUT" : player.DEBUT_YEAR,
+                DEBUT_YEAR: player.DEBUT,
                 INTERNATIONAL: player.INTERNATIONAL,
             }
         }))
@@ -145,7 +162,7 @@ const STATS_QUERY = async () => {
     for (var key of Object.keys(yearlyPlayers)) {
         const splitPlayers = splitArray(yearlyPlayers[key] as number[], 100);
         for (var subArray of splitPlayers) {
-            const playerResult = await fetch(sabermetricsURL(subArray, key));
+            const playerResult = await fetch(sabermetricsURL(subArray, Number(key)));
             const json = await playerResult.json();
             json["people"].forEach(plr => {
                 allPlayers.push({
