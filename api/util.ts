@@ -51,9 +51,9 @@ export const getAllPlayers = async (): Promise<{}> => {
         return await json["people"].map(player => { return player.id ?? 0 });
     }
     let res = {};
-    for (let i = 0; i < 23; i++) {
-        const gfy = await getFromYear(2000 + i);
-        res[2000 + i] = gfy;
+    for (let i = 0; i < 41; i++) {
+        const gfy = await getFromYear(1982 + i);
+        res[1982 + i] = gfy;
     }
     return res;
 }
@@ -66,9 +66,10 @@ export const getAllDraft = async () => {
         return await json["drafts"]["rounds"];
     }
     let res = {};
-    for (let i = 0; i < 43; i++) {
-        const gdy = await getDraftYear(1980 + i);
-        res[1980 + i] = gdy;
+    for (let i = 0; i < 41; i++) {
+        //Draft info starts at 1982. I checked a SELECT statement on all players present in the league in 2000, and the earliest debut year for all players was 1982, so I wanted to include all stats for players who were present.
+        const gdy = await getDraftYear(1982 + i);
+        res[1982 + i] = gdy;
     }
     return res;
 }

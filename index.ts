@@ -20,7 +20,10 @@ function processRows(rows: any, res: Response, err: MysqlError) {
         res.status(404).json({ message: "No data found matching query." });
         return;
     }
-    res.status(200).json(rows);
+    res.status(200).json({
+        count: rows.length,
+        rows: rows
+    });
 }
 
 function getAndProcessData(req: Request, res: Response, query: string, bothwar: boolean) {
@@ -37,6 +40,29 @@ function getAndProcessData(req: Request, res: Response, query: string, bothwar: 
 
     dbConnection.query(query, params, (err, rows) => {
         processRows(rows, res, err);
+    });
+}
+
+function processComplexQuery(queryJSON: {}, res: Response, query: string, groupBy?: string) {
+    let andParam: boolean = false;
+    let params = [];
+
+    for (var key of Object.keys(queryJSON)) {
+        let value = queryJSON[key];
+        if (value && !andParam) {
+            query += ` WHERE ${key}=?`;
+            params.push(value);
+            andParam = true;
+            continue;
+        }
+        if (value && andParam) {
+            query += ` AND ${key}=?`;
+            params.push(value);
+        }
+    }
+
+    dbConnection.query(query, params, (err, result) => {
+        processRows(result, res, err);
     });
 }
 
@@ -57,12 +83,9 @@ app.listen(8800, async () => {
             }
         }
     });
+    await STATS_QUERY();
     Test.runAllTests();
 });
-
-app.get(`${baseAPI}/draft`, (req, res) => {
-    getAndProcessData(req, res, "SELECT * FROM DRAFT_INFO", false);
-})
 
 app.get(`${baseAPI}/bothwar`, async (req, res) => {
     const getLeftOrRight = (lr: "LEFT" | "RIGHT") => {
@@ -84,37 +107,15 @@ app.get(`${baseAPI}/pitching`, async (req, res) => {
 })
 
 app.get(`${baseAPI}/search`, async (req, res) => {
-    const { first, last, intl, year } = req.query;
-    let query = "";
-
-    if (first) {
-        query += `WHERE FIRST_NAME="${first}"`;
-    }
-    if (last) {
-        query += ` ${(first) ? "AND" : "WHERE"} LAST_NAME="${last}"`
-    }
-    if (intl) {
-        query += ` ${(first || last) ? "AND " : "WHERE "}INTERNATIONAL=${intl === "true" ? 1 : 0}`;
-    }
-    if (year) {
-        query += ` ${(first || last || intl) ? "AND " : "WHERE "}DEBUT_YEAR=${year}`;
-    }
-
-    dbConnection.query(`SELECT PLAYER_ID, FIRST_NAME, LAST_NAME, CASE WHEN DEBUT_YEAR=0 THEN "NO DEBUT" ELSE DEBUT_YEAR END AS DEBUT, INTERNATIONAL FROM DRAFT_INFO ${query} GROUP BY PLAYER_ID;`, (err, result) => {
-        if (err) {
-            res.status(400).send(err.code);
-            return;
-        }
-        res.json(result.map(player => {
-            return {
-                PLAYER_ID: player.PLAYER_ID,
-                FIRST_NAME: player.FIRST_NAME,
-                LAST_NAME: player.LAST_NAME,
-                DEBUT_YEAR: player.DEBUT,
-                INTERNATIONAL: player.INTERNATIONAL,
-            }
-        }))
-    })
+    const { first, last, intl, year, pid } = req.query;
+    const queryJSON = {
+        FIRST_NAME: first,
+        LAST_NAME: last,
+        INTERNATIONAL: intl,
+        DRAFT_YEAR: year,
+        PLAYER_ID: pid
+    };
+    processComplexQuery(queryJSON, res, 'SELECT *, CASE WHEN DEBUT_YEAR=0 THEN "NO DEBUT" ELSE DEBUT_YEAR END AS DEBUT_YEAR FROM DRAFT_INFO')
 })
 
 const DRAFT_INFO_QUERY = async () => {
@@ -135,9 +136,9 @@ const DRAFT_INFO_QUERY = async () => {
                     DEBUT_YEAR: Number(debutDate.substring(0, 4)) ?? 0,
                     INTERNATIONAL: player.person?.birthCountry ? player.person?.birthCountry != "USA" : undefined
                 } as PlayerDraftInfo;
-                if (!Number.isNaN(pdi.PLAYER_ID)) {
+                if (pdi.DEBUT_YEAR >= 1982) {
                     playerCount++;
-                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, FIRST_NAME, LAST_NAME, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES (${pdi.PLAYER_ID}, "${pdi.FIRST_NAME}", "${pdi.LAST_NAME}",${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)
+                    dbConnection.query(`INSERT INTO DRAFT_INFO (PLAYER_ID, FIRST_NAME, LAST_NAME, DRAFT_YEAR, DRAFT_ROUND, DRAFT_POSITION, DEBUT_YEAR, INTERNATIONAL) VALUES ("${pdi.PLAYER_ID ?? -playerCount}", "${pdi.FIRST_NAME}", "${pdi.LAST_NAME}",${pdi.DRAFT_YEAR},"${pdi.DRAFT_ROUND}",${pdi.DRAFT_POSITION},${pdi.DEBUT_YEAR},${pdi.INTERNATIONAL ?? "NULL"})`)
                 }
             }
         }
@@ -147,22 +148,27 @@ const DRAFT_INFO_QUERY = async () => {
 
 const STATS_QUERY = async () => {
     const yearlyPlayers = await getAllPlayers();
+    let totalPlayerLength = 0;
     let allPlayers: { id: number, stats: any, positionAbbrev: string }[] = [];
     for (var key of Object.keys(yearlyPlayers)) {
         const splitPlayers = splitArray(yearlyPlayers[key] as number[], 100);
+        console.log(key, splitPlayers.length);
         for (var subArray of splitPlayers) {
             const playerResult = await fetch(sabermetricsURL(subArray, Number(key)));
             const json = await playerResult.json();
             json["people"].forEach(plr => {
-                allPlayers.push({
-                    id: plr["id"],
-                    positionAbbrev: plr["primaryPosition"]["abbreviation"],
-                    stats: plr["stats"].filter(stat => ["hitting", "pitching", "sabermetrics", "fielding"].includes(stat.group.displayName))
-                })
+                if (Number(plr["mlbDebutDate"].substring(0, 4)) >= 1982) {
+                    totalPlayerLength++;
+                    allPlayers.push({
+                        id: plr["id"],
+                        positionAbbrev: plr["primaryPosition"]["abbreviation"],
+                        stats: plr["stats"].filter(stat => ["hitting", "pitching", "sabermetrics", "fielding"].includes(stat.group.displayName))
+                    })
+                }
             });
         }
     }
-
+    console.log(`Finished collecting players (${totalPlayerLength} total)`);
     let saberHittingCount = 0, saberPitchingCount = 0, fieldingCount = 0, hittingCount = 0;
     for (var player of allPlayers) {
         const saberHitting = player.stats.filter(group => group.type.displayName == "sabermetrics" && group.group.displayName == "hitting")[0];

@@ -29,9 +29,10 @@ export const tableHeaders = {
     DRAFT_INFO: [
         {
             name: "PLAYER_ID",
-            type: "INT",
+            type: "VARCHAR",
+            size: 100,
             nullable: "NOT NULL"
-        } as SQLType,
+        } as SQLVarType,
         {
             name: "FIRST_NAME",
             type: "VARCHAR",
