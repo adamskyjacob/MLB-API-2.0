@@ -15,32 +15,19 @@
         margin-bottom: 4vw;
     }
 
-    .subpage .table_container {
-        height: 20px;
-        background-color: #dedede;
-        position: absolute;
-        z-index: -1;
-        width: 76%;
-        height: 216vw;
-        top: 7vw;
-        margin-left: calc(24% / 2);
-        transition: all ease-in-out .33s;
-        filter: blur(5px);
-    }
-
         .subpage table th {
             border: 1px solid black;
             padding: .3vw .5vw;
         }
 
-            .subpage table tbody th {
-                font-weight: 500;
+        .subpage table tbody th {
+            font-weight: 500;
+        }
+
+            .subpage table tbody th.true {
+                background-color: green;
             }
 
-        .subpage table tbody th.true {
-            background-color: green;
-        }
-
-        .subpage table tbody th.false {
-            background-color: red;
-        }
+            .subpage table tbody th.false {
+                background-color: red;
+            }

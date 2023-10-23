@@ -20,10 +20,7 @@ function processRows(rows: any, res: Response, err: MysqlError) {
         res.status(404).json({ message: "No data found matching query." });
         return;
     }
-    res.status(200).json({
-        count: rows.length,
-        rows: rows
-    });
+    res.status(200).json(rows);
 }
 
 function getAndProcessData(req: Request, res: Response, query: string, bothwar: boolean) {

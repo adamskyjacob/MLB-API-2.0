@@ -7,20 +7,20 @@ import { useEffect } from "react";
 
 const showNavbarElements = () => {
     const navbar: HTMLElement = document.querySelector(".nav_bar") as HTMLElement;
-    const tableBG: HTMLDivElement = document.querySelector(".table_container") as HTMLDivElement;
+    const tableBG: HTMLDivElement | null = document.querySelector(".table_container");
     navbar.style.setProperty("height", "8vh");
     navbar.style.setProperty("line-height", "8vh");
     navbar.style.setProperty("font-size", "1.5vw");
-    tableBG.style.setProperty("top", "calc(6.67vw + 4vh)");
+    tableBG?.style.setProperty("top", "calc(6.67vw + 4vh)");
 }
 
 const hideNavbarElements = () => {
     const navbar: HTMLElement = document.querySelector(".nav_bar") as HTMLElement;
-    const tableBG: HTMLDivElement = document.querySelector(".table_container") as HTMLDivElement;
+    const tableBG: HTMLDivElement | null = document.querySelector(".table_container");
     navbar.style.setProperty("height", "4vh");
     navbar.style.setProperty("line-height", "5vw");
     navbar.style.setProperty("font-size", "0vw");
-    tableBG.style.setProperty("top", "calc(7vw)");
+    tableBG?.style.setProperty("top", "calc(7vw)");
 }
 
 export default function NavigationBar() {

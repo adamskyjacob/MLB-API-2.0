@@ -5,7 +5,7 @@ export const paths = [
         name: "Home"
     },
     {
-        path: "/Offensive_WAR",
+        path: "/Offensive_WAR?pid=&year=&page=0",
         name: "Offensive WAR"
     },
     {
