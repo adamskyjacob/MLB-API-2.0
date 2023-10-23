@@ -1,9 +1,16 @@
 {
   "ExpandedNodes": [
     "",
-    "\\api",
-    "\\testing"
+    "\\frontend",
+    "\\frontend\\src",
+    "\\frontend\\src\\Components",
+    "\\frontend\\src\\Components\\Fielding",
+    "\\frontend\\src\\Components\\NavigationBar",
+    "\\frontend\\src\\Components\\Offensive",
+    "\\frontend\\src\\Components\\OffensiveWAR",
+    "\\frontend\\src\\Components\\Pitching",
+    "\\frontend\\src\\Components\\PitchingWAR"
   ],
-  "SelectedNode": "\\api\\api.ts",
+  "SelectedNode": "\\server",
   "PreviewInSolutionExplorer": false
 }
