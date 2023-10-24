@@ -1,9 +1,10 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
-import Home from './Components/Home/Home';
+
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavigationBar from './Components/NavigationBar/NavigationBar';
 import StatsDisplay, { TargetType } from './Components/StatsDisplay/StatsDisplay';
+import Search from './Components/Search/Search';
 
 function App() {
     return (
@@ -17,7 +18,7 @@ function App() {
                 <Route path="/Fielding" element={<StatsDisplay source={TargetType.Fielding} />} />
                 <Route path="/Both_WAR" element={<StatsDisplay source={TargetType.BothWAR} />} />
                 <Route path="/Draft_Info" element={<StatsDisplay source={TargetType.DraftInfo} />} />
-                <Route element={<Home />} />
+                <Route path="*" element={<Search />} />
             </Routes>
         </BrowserRouter>
     );

@@ -1,0 +1,52 @@
+
+.subpage {
+    width: stretch;
+    height: stretch;
+    text-align: center;
+    margin-top: unset;
+    font-size: 1vw;
+}
+
+    .subpage .buttons {
+        min-height: 5vw;
+        font-size: 1vw;
+    }
+
+    .subpage table {
+        position: relative;
+        border-collapse: collapse;
+        margin: 1vw auto;
+        table-layout: fixed;
+        width: 75%;
+        margin-bottom: 4vw;
+        background-color: white;
+    }
+
+        .subpage table::after {
+            content: "";
+            position: absolute;
+            top: -.75vw;
+            left: -.75vw;
+            width: calc(100% - 1.5vw);
+            height: calc(100% - 1.5vw);
+            border: 1.5vw solid black;
+            filter: blur(.5vw);
+            z-index: -1;
+        }
+
+        .subpage table th {
+            border: 1px solid black;
+            padding: .3vw .5vw;
+        }
+
+        .subpage table tbody th {
+            font-weight: 500;
+        }
+
+            .subpage table tbody th.true {
+                background-color: green;
+            }
+
+            .subpage table tbody th.false {
+                background-color: red;
+            }

@@ -80,18 +80,44 @@ app.listen(8800, async () => {
             }
         }
         console.log(result);
-        if (!result.includes("DRAFT_INFO")) {
+        if (!dbTables.includes("DRAFT_INFO")) {
             DRAFT_INFO_QUERY();
+            console.log("Getting and inserting data into DRAFT_INFO.");
         }
-        if (!result.includes("OFFENSIVE_WAR") || !result.includes("PITCHING_WAR") || !result.includes("HITTING") || !result.includes("PITCHING") || !result.includes("FIELDING")) {
+        if (!dbTables.includes("OFFENSIVE_WAR") || !dbTables.includes("PITCHING_WAR") || !dbTables.includes("HITTING") || !dbTables.includes("PITCHING") || !dbTables.includes("FIELDING")) {
+            console.log("Getting and inserting data into WAR, fielding, hitting, and pitching tables.");
             STATS_QUERY();
         }
-        if (!result.includes("PLAYER_POSITION")) {
+        if (!dbTables.includes("PLAYER_POSITION")) {
+            console.log("Getting and inserting data into PLAYER_POSITION.");
             PLAYER_POSITION_QUERY();
         }
     });
     Test.runAllTests();
 });
+
+app.get(`${baseAPI}/findplayer`, async (req, res) => {
+    const { first, last, debut } = req.query;
+    console.log({ ...req.query });
+    let query = "SELECT DISTINCT PLAYER_ID, FIRST_NAME, LAST_NAME, DEBUT_YEAR, INTERNATIONAL FROM DRAFT_INFO";
+    if (first) {
+        query += ` WHERE FIRST_NAME LIKE '%${first}%'`;
+    }
+    if (last) {
+        query += `${first ? " AND" : " WHERE"} LAST_NAME LIKE '%${last}%'`
+    }
+    if (debut) {
+        query += `${(first || last) ? " AND" : " WHERE"} DEBUT_YEAR=${debut}`
+    }
+
+    dbConnection.query(query, (err, rows) => {
+        if (!rows || err) {
+            console.log(err);
+            res.status(400).send({ message: "Failed to retrieve data" });
+        }
+        res.json(rows);
+    })
+})
 
 app.get(`${baseAPI}/bothwar`, async (req, res) => {
     const getLeftOrRight = (lr: "LEFT" | "RIGHT") => {
