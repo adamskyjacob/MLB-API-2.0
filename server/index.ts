@@ -79,6 +79,16 @@ app.listen(8800, async () => {
                 dbConnection.query(query);
             }
         }
+        console.log(result);
+        if (!result.includes("DRAFT_INFO")) {
+            DRAFT_INFO_QUERY();
+        }
+        if (!result.includes("OFFENSIVE_WAR") || !result.includes("PITCHING_WAR") || !result.includes("HITTING") || !result.includes("PITCHING") || !result.includes("FIELDING")) {
+            STATS_QUERY();
+        }
+        if (!result.includes("PLAYER_POSITION")) {
+            PLAYER_POSITION_QUERY();
+        }
     });
     Test.runAllTests();
 });

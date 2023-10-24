@@ -1,28 +1,22 @@
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './App.css';
-import BothWAR from './Components/BothWAR/BothWAR';
-import DraftInfo from './Components/DraftInfo/DraftInfo';
-import Fielding from './Components/Fielding/Fielding';
 import Home from './Components/Home/Home';
 import NavigationBar from './Components/NavigationBar/NavigationBar';
-import Offensive from './Components/Offensive/Offensive';
-import OffensiveWAR from './Components/OffensiveWAR/OffensiveWAR';
-import Pitching from './Components/Pitching/Pitching';
-import PitchingWAR from './Components/PitchingWAR/PitchingWAR';
+import StatsDisplay, { TargetType } from './Components/StatsDisplay/StatsDisplay';
 
 function App() {
     return (
         <BrowserRouter>
             <NavigationBar />
             <Routes>
-                <Route path="/Offensive_WAR" element={<OffensiveWAR />} />
-                <Route path="/Pitching_WAR" element={<PitchingWAR />} />
-                <Route path="Offensive" element={<Offensive />} />
-                <Route path="/Pitching" element={<Pitching />} />
-                <Route path="/Fielding" element={<Fielding />} />
-                <Route path="/Both_WAR" element={<BothWAR />} />
-                <Route path="/Draft_Info" element={<DraftInfo />} />
+                <Route path="/Offensive_WAR" element={<StatsDisplay source={TargetType.OffensiveWAR} />} />
+                <Route path="/Pitching_WAR" element={<StatsDisplay source={TargetType.PitchingWAR} />} />
+                <Route path="/Offensive" element={<StatsDisplay source={TargetType.Offensive} />} />
+                <Route path="/Pitching" element={<StatsDisplay source={TargetType.Pitching} />} />
+                <Route path="/Fielding" element={<StatsDisplay source={TargetType.Fielding} />} />
+                <Route path="/Both_WAR" element={<StatsDisplay source={TargetType.BothWAR} />} />
+                <Route path="/Draft_Info" element={<StatsDisplay source={TargetType.DraftInfo} />} />
                 <Route element={<Home />} />
             </Routes>
         </BrowserRouter>
