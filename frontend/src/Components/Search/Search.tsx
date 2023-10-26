@@ -42,7 +42,7 @@ export default function Search() {
         if (first || last || debut) {
             getPlayerData();
         }
-    });
+    }, []);
 
     return (
         <div className="subpage">
