@@ -1,7 +1,8 @@
 import { TestParameter, validatePlayerIDParameters, validateYearParameters, colorStringParameters, splitArrayParameters, createTableQueryParameters } from "./testparams";
 import { validatePlayerID, validateYear } from "../api/validation";
-import { colorString, createTableQuery, splitArray } from "../api/util";
+import { colorString, splitArray } from "../api/util";
 import lodash from "lodash";
+import { createTableQuery } from "../api/db";
 
 export default class Test {
     static runAllTests() {

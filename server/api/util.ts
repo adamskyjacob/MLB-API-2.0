@@ -1,5 +1,33 @@
-import { draftURL } from "./api";
-import { SQLTypeArray } from "./types";
+export function onlyUnique(value, index, array) {
+    return array.indexOf(value) === index;
+}
+
+export function convertMillisecondsToTime(milliseconds) {
+    // Calculate hours, minutes, seconds, and milliseconds
+    let hours = Math.floor(milliseconds / 3600000);
+    milliseconds %= 3600000;
+    let minutes = Math.floor(milliseconds / 60000);
+    milliseconds %= 60000;
+    let seconds = Math.floor(milliseconds / 1000);
+
+    let timeString = '';
+
+    if (hours > 0) {
+        timeString += hours + 'h ';
+    }
+
+    if (minutes > 0 || hours > 0) {
+        timeString += minutes + 'm ';
+    }
+
+    if (seconds > 0 || minutes > 0 || hours > 0) {
+        timeString += seconds + 's ';
+    }
+
+    timeString += milliseconds + 'ms';
+
+    return timeString.trim();
+}
 
 export function colorString(color: ("R" | "Y" | "G" | "B" | "P"), val: any) {
     function getString() {
@@ -41,57 +69,4 @@ export function splitArray<T>(array: T[], size: number): T[][] {
         result.push(subArr);
     }
     return result;
-}
-
-export const getAllPlayers = async (): Promise<{}> => {
-    async function getFromYear(year: number) {
-        const url = `https://statsapi.mlb.com/api/v1/sports/1/players?season=${year}`;
-        const raw = await fetch(url);
-        const json = await raw.json();
-        return await json["people"].map(player => { return player.id ?? 0 });
-    }
-    let res = {};
-    for (let i = 0; i < 41; i++) {
-        const gfy = await getFromYear(1982 + i);
-        res[1982 + i] = gfy;
-    }
-    return res;
-}
-
-export const getAllDraft = async () => {
-    async function getDraftYear(year: number) {
-        const url = draftURL(year);
-        const raw = await fetch(url);
-        const json = await raw.json();
-        return await json["drafts"]["rounds"];
-    }
-    let res = {};
-    for (let i = 0; i < 41; i++) {
-        //Draft info starts at 1982. I checked a SELECT statement on all players present in the league in 2000, and the earliest debut year for all players was 1982, so I wanted to include all stats for players who were present.
-        const gdy = await getDraftYear(1982 + i);
-        res[1982 + i] = gdy;
-    }
-    return res;
-}
-
-export function createTableQuery(name: string, attrs: SQLTypeArray, year: boolean) {
-    let pkString = year ? `, PRIMARY KEY (\`YEAR_NUM\`, \`PLAYER_ID\`)` : `, PRIMARY KEY (\`PLAYER_ID\`)`;
-    if (name == "ALL_WAR") {
-        pkString = pkString.replace(")", "") + `, \`POSITION\`)`;
-    }
-    if (name == "DRAFT_INFO") {
-        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`, \`DRAFT_ROUND\`)`;
-    }
-    const attrString = attrs.map(attr => {
-        if (attr["vals"]) {
-            const valJoin = attr["vals"].map(val => `"${val}"`).join(",");
-            return `\`${attr.name}\` ${attr.type}(${valJoin}) ${attr.nullable}`;
-        }
-        if (attr["size"]) {
-            return `\`${attr.name}\` ${attr.type}(${attr["size"]}) ${attr.nullable}`;
-        }
-        return `\`${attr.name}\` ${attr.type} ${attr.nullable}`;
-    }).join(", ");
-    return `CREATE TABLE \`MQP\`.\`${name}\` (${attrString}${pkString})`;
-
 }

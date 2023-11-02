@@ -37,6 +37,37 @@ type SQLVarType = SQLType & {
 
 type SQLTypeArray = (SQLType | SQLVarType | SQLBasicType | SQLEnum)[];
 
+type PlayerInformation = {
+    id: number,
+    firstName: string,
+    lastName: string,
+    birthDate: string,
+    birthCountry: string,
+    height: string,
+    weight: number,
+    draftYear: number,
+    mlbDebutDate: string,
+    lastPlayedDate: string,
+    batSide: "L" | "R" | "S",
+    pitchHand: "L" | "R" | "S",
+    strikeZoneTop: number,
+    strikeZoneBottom: number
+}
+
+type StatisticsPlayer = {
+    id: number,
+    year: number,
+    position: string,
+    stats: any[]
+}
+
+type DraftPlayer = {
+    id: number,
+    draftYear: number,
+    draftRound: string,
+    draftPosition: number
+}
+
 export {
-    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray
+    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer
 }

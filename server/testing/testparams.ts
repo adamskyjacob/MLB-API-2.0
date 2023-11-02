@@ -10,26 +10,20 @@ export interface TestParameter {
 const createTableQueryGenerated: TestParameter[] = Object.keys(tableHeaders).map(header => {
     function getQueryFromName(name: string) {
         switch (name) {
-            case 'HITTING': {
-                return 'CREATE TABLE `MQP`.`HITTING` (`OPS` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            case 'PLAYER_INFO': {
+                return 'CREATE TABLE `MQP`.`PLAYER_INFO` (`ID` INT NOT NULL, `FIRST_NAME` VARCHAR(100) NOT NULL, `LAST_NAME` VARCHAR(100) NOT NULL, `BIRTH_DATE` VARCHAR(100) NOT NULL, `BIRTH_COUNTRY` VARCHAR(100) NOT NULL, `HEIGHT` VARCHAR(100) NULL, `WEIGHT` INT NULL, `DRAFT_YEAR` INT NULL, `MLB_DEBUT_DATE` VARCHAR(100) NULL, `LAST_PLAYED_DATE` VARCHAR(100) NULL, `BAT_SIDE` ENUM("L","R","S") NOT NULL, `THROW_SIDE` ENUM("L","R","S") NOT NULL, `STRIKE_ZONE_TOP` FLOAT NULL, `STRIKE_ZONE_BOTTOM` FLOAT NULL, PRIMARY KEY (`ID`))';
             }
-            case 'PITCHING': {
-                return 'CREATE TABLE `MQP`.`PITCHING` (`ERA_MINUS` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            case 'POSITION_STATS': {
+                return 'CREATE TABLE `MQP`.`POSITION_STATS` (`ID` INT NOT NULL, `SEASON_YEAR` INT NOT NULL, `POSITION` VARCHAR(100) NOT NULL, `FIELDING_PCT` FLOAT NOT NULL, `WAR` FLOAT NOT NULL, PRIMARY KEY (`ID`))';
             }
-            case 'FIELDING': {
-                return 'CREATE TABLE `MQP`.`FIELDING` (`FLD_PCT` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
-            }
-            case 'OFFENSIVE_WAR': {
-                return 'CREATE TABLE `MQP`.`OFFENSIVE_WAR` (`WAR` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, `CATCHER` BOOLEAN NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
-            }
-            case 'PITCHING_WAR': {
-                return 'CREATE TABLE `MQP`.`PITCHING_WAR` (`WAR` FLOAT NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            case 'PITCHING_STATS': {
+                return 'CREATE TABLE `MQP`.`PITCHING_STATS` (`ID` INT NOT NULL, `SEASON_YEAR` INT NOT NULL, `ERA_MINUS` FLOAT NOT NULL, `WAR` FLOAT NOT NULL, PRIMARY KEY (`ID`))';
             }
             case 'DRAFT_INFO': {
-                return 'CREATE TABLE `MQP`.`DRAFT_INFO` (`PLAYER_ID` VARCHAR(100) NOT NULL, `FIRST_NAME` VARCHAR(100) NOT NULL, `LAST_NAME` VARCHAR(100) NOT NULL, `DRAFT_YEAR` INT NOT NULL, `DRAFT_ROUND` VARCHAR(20) NOT NULL, `DRAFT_POSITION` INT NULL, `DEBUT_YEAR` INT NULL, `INTERNATIONAL` BOOLEAN NULL, PRIMARY KEY (`PLAYER_ID`, `DRAFT_YEAR`, `DRAFT_ROUND`))';
+                return 'CREATE TABLE `MQP`.`DRAFT_INFO` (`ID` INT NOT NULL, `DRAFT_YEAR` INT NOT NULL, `DRAFT_ROUND` VARCHAR(20) NULL, `DRAFT_POSITION` INT NULL, PRIMARY KEY (`ID`, `DRAFT_YEAR`))';
             }
-            case 'PLAYER_POSITION': {
-                return 'CREATE TABLE `MQP`.`PLAYER_POSITION` (`POSITION` ENUM("TWP","P","1B","2B","3B","SS","CF","LF","RF","C","DH","OF","IF","PH") NOT NULL, `PLAYER_ID` VARCHAR(100) NOT NULL, `YEAR_NUM` INT NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))';
+            default: {
+                return 'This case isn\'t being handled.';
             }
         }
     }
@@ -40,7 +34,7 @@ const createTableQueryGenerated: TestParameter[] = Object.keys(tableHeaders).map
         match: true
     }
     return paramMapping;
-})
+});
 
 export const createTableQueryParameters: TestParameter[] = createTableQueryGenerated.concat(
     [
@@ -95,7 +89,7 @@ export const createTableQueryParameters: TestParameter[] = createTableQueryGener
                 ] as SQLTypeArray,
                 true
             ],
-            expected: 'CREATE TABLE `MQP`.`WEIRD` (`WORD` TINYTEXT NOT NULL, `BLAH` VARCHAR(100) NOT NULL, `BLAH` ENUM("ABC","DEF","GHI","JKL","MNO","PQR","STU","VWX","YZ") NOT NULL, PRIMARY KEY (`YEAR_NUM`, `PLAYER_ID`))',
+            expected: 'CREATE TABLE `MQP`.`WEIRD` (`WORD` TINYTEXT NOT NULL, `BLAH` VARCHAR(100) NOT NULL, `BLAH` ENUM("ABC","DEF","GHI","JKL","MNO","PQR","STU","VWX","YZ") NOT NULL, PRIMARY KEY (`SEASON_YEAR`, `ID`))',
             match: true
         } as TestParameter,
         {
