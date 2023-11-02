@@ -15,7 +15,7 @@ app.listen(8800, async () => {
     await tryInitializeDatabase();
 });
 
-app.get(`${baseAPI}/draft_info`, async (req, res) => {
+app.get(`${baseAPI}/draft`, async (req, res) => {
     getAndProcessData(req, res, "SELECT * FROM DRAFT_INFO", false);
 })
 

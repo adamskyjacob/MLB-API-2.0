@@ -1,7 +1,4 @@
-import { baseURL, dbConnection, draftURL, sabermetricsURL } from "./db";
-import { PlayerDraftInfo, SQLBasicType, SQLEnum, SQLType, SQLTypeArray, SQLVarType } from "./types";
-import { splitArray } from "./util";
-
+/*
 const DRAFT_INFO_QUERY = async () => {
     const draftPlayers = await getAllDraft();
     let playerCount = 0;
@@ -317,7 +314,7 @@ let tables = {
 
 //OLD EXPRESS ROUTES
 
-    /*app.get(`${baseAPI}/findplayer`, async (req, res) => {
+app.get(`${baseAPI}/findplayer`, async (req, res) => {
     findPlayerData(req, res);
 })
 
@@ -364,7 +361,6 @@ app.get(`${baseAPI}/search`, async (req, res) => {
     processComplexQuery(queryJSON, res, 'SELECT *, CASE WHEN DEBUT_YEAR=0 THEN "NO DEBUT" ELSE DEBUT_YEAR END AS DEBUT_YEAR FROM DRAFT_INFO')
 })
 
-    */
 
 
 
@@ -372,28 +368,29 @@ app.get(`${baseAPI}/search`, async (req, res) => {
 
 
 
-/*                                dbConnection.query("INSERT INTO POSITION_STATS")
-                                for (var statSection of stats) {
-                                    const statType = statSection.type.displayName + statSection.group.displayName;
-                                    for (var split of statSection.splits) {
-                                        const query = [year, split.position.abbreviation]
-                                        switch (statType) {
-                                            case "seasonfielding": {
-                                                dbConnection.query("UPDATE POSITION_STATS SET FIELDING_PCT=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
-                                                return;
-                                            }
-                                            case "sabermetricsfielding": {
-                                                dbConnection.query("UPDATE POSITION_STATS SET UZR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
-                                                return;
-                                            }
-                                            case "sabermetricshitting": {
-                                                dbConnection.query("UPDATE POSITION_STATS SET WAR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
-                                                return;
-                                            }
-                                            case "seasonhitting": {
-                                                dbConnection.query("UPDATE POSITION_STATS SET WAR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
-                                                return;
-                                            }
-                                        }
-                                    }
-                                }*/
+dbConnection.query("INSERT INTO POSITION_STATS")
+for (var statSection of stats) {
+    const statType = statSection.type.displayName + statSection.group.displayName;
+    for (var split of statSection.splits) {
+        const query = [year, split.position.abbreviation]
+        switch (statType) {
+            case "seasonfielding": {
+                dbConnection.query("UPDATE POSITION_STATS SET FIELDING_PCT=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
+                return;
+            }
+            case "sabermetricsfielding": {
+                dbConnection.query("UPDATE POSITION_STATS SET UZR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
+                return;
+            }
+            case "sabermetricshitting": {
+                dbConnection.query("UPDATE POSITION_STATS SET WAR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
+                return;
+            }
+            case "seasonhitting": {
+                dbConnection.query("UPDATE POSITION_STATS SET WAR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", [split.stat.fielding, ...query]);
+                return;
+            }
+        }
+    }
+}
+*/

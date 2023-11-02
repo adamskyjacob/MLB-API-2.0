@@ -3,7 +3,6 @@ export function onlyUnique(value, index, array) {
 }
 
 export function convertMillisecondsToTime(milliseconds) {
-    // Calculate hours, minutes, seconds, and milliseconds
     let hours = Math.floor(milliseconds / 3600000);
     milliseconds %= 3600000;
     let minutes = Math.floor(milliseconds / 60000);

@@ -6,12 +6,13 @@ import { createTableQuery } from "../api/db";
 
 export default class Test {
     static async runAllTests() {
-        await new Promise<void>(() => {
+        await new Promise<void>((resolve) => {
             Test.validateFunction("validatePlayerID", validatePlayerID, validatePlayerIDParameters);
             Test.validateFunction("validateYear", validateYear, validateYearParameters);
             Test.validateFunction("colorString", colorString, colorStringParameters);
             Test.validateFunction("splitArray", splitArray, splitArrayParameters);
             Test.validateFunction("createTableQuery", createTableQuery, createTableQueryParameters);
+            resolve();
         })
     }
 

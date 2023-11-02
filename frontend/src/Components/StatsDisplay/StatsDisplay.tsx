@@ -1,10 +1,10 @@
 import "./StatsDisplay.css";
 
 import { useEffect, useState } from "react";
-import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export enum TargetType {
-    DraftInfo = "draft_info", FieldingStats = "fielding", PitchingStats = "pitching", HittingStats = "hitting", PlayerInfo = "info"
+    DraftInfo = "draft", FieldingStats = "fielding", PitchingStats = "pitching", HittingStats = "hitting", PlayerInfo = "info"
 }
 
 function WARTypeToTarget(type: TargetType) {

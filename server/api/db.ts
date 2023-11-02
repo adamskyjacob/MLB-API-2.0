@@ -181,15 +181,10 @@ export const tableHeaders = {
             vals: ["L", "R", "S"]
         } as SQLEnum,
         {
-            name: "STRIKE_ZONE_TOP",
-            type: "FLOAT",
+            name: "PASS",
+            type: "BOOLEAN",
             nullable: "NULL"
-        } as SQLType,
-        {
-            name: "STRIKE_ZONE_BOTTOM",
-            type: "FLOAT",
-            nullable: "NULL"
-        } as SQLType,
+        } as SQLBasicType
     ],
     FIELDING_STATS: [
         {
@@ -414,12 +409,11 @@ async function getPlayerInformation(): Promise<void> {
                     lastPlayedDate: player['lastPlayedDate'] ?? "N/A",
                     batSide: player['batSide']['code'],
                     pitchHand: player['pitchHand']['code'],
-                    strikeZoneTop: player['strikeZoneTop'],
-                    strikeZoneBottom: player['strikeZoneBottom'],
+                    pass: player['isPass']
                 } as const;
 
                 await new Promise<void>((resolve, _) => {
-                    dbConnection.query("INSERT INTO PLAYER_INFO VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [...Object.values(info)], (err, _) => {
+                    dbConnection.query("INSERT INTO PLAYER_INFO VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [...Object.values(info)], (err, _) => {
                         if (!err) {
                             count++;
                         }
@@ -432,8 +426,6 @@ async function getPlayerInformation(): Promise<void> {
         console.log(`Finished adding ${count} players into PLAYER_INFO table`);
     }
 }
-
-const positions = ["1B", "2B", "3B", "SS", "LF", "RF", "CF",]
 
 async function getPlayerStatistics(): Promise<void> {
     const startTime = Date.now();
@@ -456,11 +448,11 @@ async function getPlayerStatistics(): Promise<void> {
             }
         })
     })
-/*
+
     if (count[0].COUNT > 0) {
-        console.log("There are already entries in a STATS table. Truncate table if you want to re-enter information.")
+        console.log("There are already entries in one of the STATS table. Truncate table if you want to re-enter information.")
         return;
-    }*/
+    }
 
     for (let year = 1982; year < 2023; year++) {
         let filtered = rows.filter(pinfo => {

@@ -50,8 +50,7 @@ type PlayerInformation = {
     lastPlayedDate: string,
     batSide: "L" | "R" | "S",
     pitchHand: "L" | "R" | "S",
-    strikeZoneTop: number,
-    strikeZoneBottom: number
+    pass: boolean
 }
 
 type StatisticsPlayer = {
