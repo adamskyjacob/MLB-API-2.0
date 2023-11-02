@@ -11,13 +11,11 @@ function App() {
         <BrowserRouter>
             <NavigationBar />
             <Routes>
-                <Route path="/Offensive_WAR" element={<StatsDisplay source={TargetType.OffensiveWAR} />} />
-                <Route path="/Pitching_WAR" element={<StatsDisplay source={TargetType.PitchingWAR} />} />
-                <Route path="/Offensive" element={<StatsDisplay source={TargetType.Offensive} />} />
-                <Route path="/Pitching" element={<StatsDisplay source={TargetType.Pitching} />} />
-                <Route path="/Fielding" element={<StatsDisplay source={TargetType.Fielding} />} />
-                <Route path="/Both_WAR" element={<StatsDisplay source={TargetType.BothWAR} />} />
                 <Route path="/Draft_Info" element={<StatsDisplay source={TargetType.DraftInfo} />} />
+                <Route path="/Fielding_Stats" element={<StatsDisplay source={TargetType.FieldingStats} />} />
+                <Route path="/Pitching_Stats" element={<StatsDisplay source={TargetType.PitchingStats} />} />
+                <Route path="/Hitting_Stats" element={<StatsDisplay source={TargetType.HittingStats} />} />
+                <Route path="/Player_Information" element={<StatsDisplay source={TargetType.PlayerInfo} />} />
                 <Route path="*" element={<Search />} />
             </Routes>
         </BrowserRouter>

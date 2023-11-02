@@ -4,27 +4,21 @@ import { useEffect, useState } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 export enum TargetType {
-    OffensiveWAR = "owar", PitchingWAR = "pwar", BothWAR = "bothwar", DraftInfo = "search", Fielding = "fielding", Offensive = "hitting", Pitching = "pitching", Position = "position"
+    DraftInfo = "draft_info", FieldingStats = "fielding", PitchingStats = "pitching", HittingStats = "hitting", PlayerInfo = "info"
 }
 
 function WARTypeToTarget(type: TargetType) {
     switch (type) {
-        case TargetType.OffensiveWAR:
-            return "Offensive_WAR";
-        case TargetType.PitchingWAR:
-            return "Pitching_WAR";
-        case TargetType.BothWAR:
-            return "Both_WAR";
         case TargetType.DraftInfo:
             return "Draft_Info";
-        case TargetType.Fielding:
-            return "Fielding";
-        case TargetType.Offensive:
-            return "Offensive";
-        case TargetType.Pitching:
-            return "Pitching";
-        case TargetType.Position:
-            return "Position";
+        case TargetType.FieldingStats:
+            return "Fielding_Stats";
+        case TargetType.PitchingStats:
+            return "Pitching_Stats";
+        case TargetType.HittingStats:
+            return "Hitting_Stats";
+        case TargetType.PlayerInfo:
+            return "Player_Information";
     }
 }
 
@@ -64,10 +58,10 @@ function StatsDisplay(props: { source: TargetType }) {
         }
 
         fetchDataAndSetTableData();
-        navigateTo(navigate, pid, year, currentIndex);
+        navigateTo(pid, year, currentIndex);
     }, [year, pid, currentIndex, navigate]);
 
-    const navigateTo = (navigate: NavigateFunction, pid: string | null, year: string | null, currentIndex: number) => {
+    const navigateTo = (pid: string | null, year: string | null, currentIndex: number) => {
         const queryParams = new URLSearchParams();
         queryParams.append("page", String(currentIndex));
         if (pid !== null) {
@@ -142,7 +136,7 @@ function StatsDisplay(props: { source: TargetType }) {
                 <select
                     onChange={(evt) => {
                         const selectedYear = evt.target.value;
-                        navigateTo(navigate, pid, selectedYear, 0);
+                        navigateTo(pid, selectedYear, 0);
                     }}
                     value={year || "0"}>
                     <option value="0">Select a year</option>

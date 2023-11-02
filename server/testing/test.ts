@@ -5,12 +5,14 @@ import lodash from "lodash";
 import { createTableQuery } from "../api/db";
 
 export default class Test {
-    static runAllTests() {
-        Test.validateFunction("validatePlayerID", validatePlayerID, validatePlayerIDParameters);
-        Test.validateFunction("validateYear", validateYear, validateYearParameters);
-        Test.validateFunction("colorString", colorString, colorStringParameters);
-        Test.validateFunction("splitArray", splitArray, splitArrayParameters);
-        Test.validateFunction("createTableQuery", createTableQuery, createTableQueryParameters);
+    static async runAllTests() {
+        await new Promise<void>(() => {
+            Test.validateFunction("validatePlayerID", validatePlayerID, validatePlayerIDParameters);
+            Test.validateFunction("validateYear", validateYear, validateYearParameters);
+            Test.validateFunction("colorString", colorString, colorStringParameters);
+            Test.validateFunction("splitArray", splitArray, splitArrayParameters);
+            Test.validateFunction("createTableQuery", createTableQuery, createTableQueryParameters);
+        })
     }
 
     static validateFunction(name: string, funcToTest: Function, testParams: TestParameter[]) {
