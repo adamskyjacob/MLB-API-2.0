@@ -456,13 +456,13 @@ async function getPlayerStatistics(): Promise<void> {
             }
         })
     })
-
+/*
     if (count[0].COUNT > 0) {
         console.log("There are already entries in a STATS table. Truncate table if you want to re-enter information.")
         return;
-    }
+    }*/
 
-    for (let year = 2022; year < 2023/*2023*/; year++) {
+    for (let year = 1982; year < 2023; year++) {
         let filtered = rows.filter(pinfo => {
             let debut = pinfo.MLB_DEBUT_DATE ? Number(pinfo.MLB_DEBUT_DATE?.substring(0, 4)) : -1;
             let last = pinfo.LAST_PLAYED_DATE != "N/A" ? Number(pinfo.LAST_PLAYED_DATE?.substring(0, 4)) : 5000;
@@ -524,6 +524,13 @@ async function getPlayerStatistics(): Promise<void> {
                             for (var pos of statSection.splits) {
                                 const query = [pos.stat.uzr, player.id, year, pos.stat.position.abbreviation];
                                 dbConnection.query("UPDATE FIELDING_STATS SET UZR=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", query)
+                            }
+                            break;
+                        }
+                        case "seasonfielding": {
+                            for (var pos of statSection.splits) {
+                                const query = [pos.stat.fielding, player.id, year, pos.stat.position.abbreviation];
+                                dbConnection.query("UPDATE FIELDING_STATS SET FIELDING_PCT=? WHERE ID=? AND SEASON_YEAR=? AND POSITION=?", query)
                             }
                             break;
                         }
