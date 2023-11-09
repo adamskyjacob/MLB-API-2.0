@@ -1,5 +1,5 @@
-import { tableHeaders } from "../api/db";
-import { MLArray, SQLBasicType, SQLEnum, SQLType, SQLTypeArray, SQLVarType } from "../api/types";
+
+import { MLArray, SQLBasicType, SQLEnum, SQLTypeArray, SQLVarType } from "../api/types";
 
 export interface TestParameter {
     value: any,
@@ -7,7 +7,7 @@ export interface TestParameter {
     match: boolean
 }
 
-const createTableQueryGenerated: TestParameter[] = Object.keys(tableHeaders).map(header => {
+/*const createTableQueryGenerated: TestParameter[] = Object.keys(tableHeaders).map(header => {
     function getQueryFromName(name: string) {
         switch (name) {
             case 'PLAYER_INFO': {
@@ -129,7 +129,7 @@ export const createTableQueryParameters: TestParameter[] = createTableQueryGener
             match: false
         } as TestParameter
     ] as TestParameter[]
-)
+)*/
 
 export const colorStringParameters: MLArray<TestParameter, 8> = [
     {

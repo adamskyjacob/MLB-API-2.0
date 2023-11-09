@@ -2,7 +2,6 @@ import { TestParameter, validatePlayerIDParameters, validateYearParameters, colo
 import { validatePlayerID, validateYear } from "../api/validation";
 import { colorString, splitArray } from "../api/util";
 import lodash from "lodash";
-import { createTableQuery } from "../api/db";
 
 export default class Test {
     static async runAllTests() {
@@ -11,7 +10,6 @@ export default class Test {
             Test.validateFunction("validateYear", validateYear, validateYearParameters);
             Test.validateFunction("colorString", colorString, colorStringParameters);
             Test.validateFunction("splitArray", splitArray, splitArrayParameters);
-            Test.validateFunction("createTableQuery", createTableQuery, createTableQueryParameters);
             resolve();
         })
     }

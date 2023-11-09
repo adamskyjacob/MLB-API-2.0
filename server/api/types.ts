@@ -38,7 +38,7 @@ type SQLVarType = SQLType & {
 type SQLTypeArray = (SQLType | SQLVarType | SQLBasicType | SQLEnum)[];
 
 type PlayerInformation = {
-    id: number,
+    _id: number,
     firstName: string,
     lastName: string,
     birthDate: string,
@@ -46,8 +46,8 @@ type PlayerInformation = {
     height: string,
     weight: number,
     draftYear: number,
-    mlbDebutDate: string,
-    lastPlayedDate: string,
+    mlbDebutDate: number,
+    lastPlayedDate: number,
     batSide: "L" | "R" | "S",
     pitchHand: "L" | "R" | "S"
 }
