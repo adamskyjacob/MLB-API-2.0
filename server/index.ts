@@ -1,21 +1,20 @@
 
 import express from 'express';
 import cors from 'cors';
-import Test from './testing/test';
-import { getAndProcessData, tryInitializeDatabase } from './api/db';
+import {  tryInitializeDatabase } from './api/db';
 
-const baseAPI: string = "/api/v1";
+//const baseAPI: string = "/api/v1";
 const app: express.Express = express();
 
 app.set('json spaces', 2)
 app.use(cors());
 
 app.listen(8800, async () => {
-    await Test.runAllTests();
+    //await Test.runAllTests();
     await tryInitializeDatabase();
 });
 
-app.get(`${baseAPI}/draft`, async (req, res) => {
+/*app.get(`${baseAPI}/draft`, async (req, res) => {
     getAndProcessData(req, res, "SELECT * FROM DRAFT_INFO", false);
 })
 
@@ -33,4 +32,4 @@ app.get(`${baseAPI}/hitting`, async (req, res) => {
 
 app.get(`${baseAPI}/info`, async (req, res) => {
     getAndProcessData(req, res, "SELECT * FROM PLAYER_INFORMATION", false);
-})
+})*/

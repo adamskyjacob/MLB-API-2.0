@@ -49,8 +49,7 @@ type PlayerInformation = {
     mlbDebutDate: string,
     lastPlayedDate: string,
     batSide: "L" | "R" | "S",
-    pitchHand: "L" | "R" | "S",
-    pass: boolean
+    pitchHand: "L" | "R" | "S"
 }
 
 type StatisticsPlayer = {
@@ -64,7 +63,8 @@ type DraftPlayer = {
     id: number,
     draftYear: number,
     draftRound: string,
-    draftPosition: number
+    draftPosition: number,
+    isPass: boolean
 }
 
 export {

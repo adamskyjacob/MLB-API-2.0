@@ -1,4 +1,314 @@
 /*
+//=================== OLD PRE-MONGODB =================//
+
+export const dbConnection = createConnection({
+    host: "localhost",
+    user: "root",
+    password: "password",
+    port: 3306,
+    database: "mqp"
+});
+
+function processRows(rows: any, res: Response, err: MysqlError) {
+    if (err) {
+        res.status(400).send(err);
+        return
+    }
+    if (rows.length == 0) {
+        res.status(404).json({ message: "No data found matching query." });
+        return;
+    }
+    res.status(200).json(rows);
+}
+
+export function findPlayerData(req: Request, res: Response) {
+    const { first, last, debut } = req.query;
+    let query = "SELECT DISTINCT PLAYER_ID, FIRST_NAME, LAST_NAME, DEBUT_YEAR, INTERNATIONAL FROM DRAFT_INFO";
+    if (first) {
+        query += ` WHERE FIRST_NAME LIKE '%${first}%'`;
+    }
+    if (last) {
+        query += `${first ? " AND" : " WHERE"} LAST_NAME LIKE '%${last}%'`
+    }
+    if (debut) {
+        query += `${(first || last) ? " AND" : " WHERE"} DEBUT_YEAR=${debut}`
+    }
+
+    dbConnection.query(query, (err, rows) => {
+        processRows(rows, res, err);
+    })
+}
+
+export function getAndProcessData(req: Request, res: Response, query: string, bothwar: boolean) {
+    const { pid, year } = req.query;
+    let params = [];
+    if (pid) {
+        query += ` WHERE ${bothwar ? "OP_JOIN." : ""}PLAYER_ID=?`;
+        params.push(pid);
+    }
+    if (year) {
+        query += `${pid ? " AND" : " WHERE"} ${bothwar ? "OP_JOIN." : ""}YEAR_NUM=?`;
+        params.push(year);
+    }
+
+    dbConnection.query(query, params, (err, rows) => {
+        processRows(rows, res, err);
+    });
+}
+
+export function processComplexQuery(queryJSON: {}, res: Response, query: string, groupBy?: string) {
+    let andParam: boolean = false;
+    let params = [];
+
+    for (var key of Object.keys(queryJSON)) {
+        let value = queryJSON[key];
+        if (value && !andParam) {
+            query += ` WHERE ${key}=?`;
+            params.push(value);
+            andParam = true;
+            continue;
+        }
+        if (value && andParam) {
+            query += ` AND ${key}=?`;
+            params.push(value);
+        }
+    }
+
+    dbConnection.query(query, params, (err, result) => {
+        processRows(result, res, err);
+    });
+}
+
+const tables: string[] = ["FIELDING_STATS", "PITCHING_STATS", "PLAYER_INFO", "DRAFT_INFO", "HITTING_STATS"];
+
+export const tableHeaders = {
+    PLAYER_INFO: [
+        {
+            name: "ID",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "FIRST_NAME",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "LAST_NAME",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "BIRTH_DATE",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "BIRTH_COUNTRY",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "HEIGHT",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NULL"
+        } as SQLVarType,
+        {
+            name: "WEIGHT",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "DRAFT_YEAR",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "MLB_DEBUT_DATE",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NULL"
+        } as SQLVarType,
+        {
+            name: "LAST_PLAYED_DATE",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NULL"
+        } as SQLVarType,
+        {
+            name: "BAT_SIDE",
+            nullable: "NOT NULL",
+            type: "ENUM",
+            vals: ["L", "R", "S"]
+        } as SQLEnum,
+        {
+            name: "THROW_SIDE",
+            nullable: "NOT NULL",
+            type: "ENUM",
+            vals: ["L", "R", "S"]
+        } as SQLEnum,
+        {
+            name: "PASS",
+            type: "BOOLEAN",
+            nullable: "NULL"
+        } as SQLBasicType
+    ],
+    FIELDING_STATS: [
+        {
+            name: "ID",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "SEASON_YEAR",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "POSITION",
+            type: "VARCHAR",
+            size: 100,
+            nullable: "NOT NULL"
+        } as SQLVarType,
+        {
+            name: "FIELDING_PCT",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "UZR",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+    ],
+    HITTING_STATS: [
+        {
+            name: "ID",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "SEASON_YEAR",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "OPS",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "WAR",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+    ],
+    PITCHING_STATS: [
+        {
+            name: "ID",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "SEASON_YEAR",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "ERA_MINUS",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+        {
+            name: "WAR",
+            type: "FLOAT",
+            nullable: "NULL"
+        } as SQLType,
+    ],
+    DRAFT_INFO: [
+        {
+            name: "ID",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "DRAFT_YEAR",
+            type: "INT",
+            nullable: "NOT NULL"
+        } as SQLType,
+        {
+            name: "DRAFT_ROUND",
+            type: "VARCHAR",
+            size: 20,
+            nullable: "NULL"
+        } as SQLVarType,
+        {
+            name: "DRAFT_POSITION",
+            type: "INT",
+            nullable: "NULL"
+        } as SQLType
+    ]
+} as const;
+
+export function createTableQuery(name: string, attrs: SQLTypeArray, year: boolean) {
+    let pkString = year ? `, PRIMARY KEY (\`SEASON_YEAR\`, \`ID\`)` : `, PRIMARY KEY (\`ID\`)`;
+    if (name == "DRAFT_INFO") {
+        pkString = pkString.replace(")", "") + `, \`DRAFT_YEAR\`)`;
+    }
+    if (name == "FIELDING_STATS") {
+        pkString = pkString.replace(")", "") + `, \`POSITION\`)`;
+    }
+
+    const attrString = attrs.map(attr => {
+        if (attr["vals"]) {
+            const valJoin = attr["vals"].map(val => `"${val}"`).join(",");
+            return `\`${attr.name}\` ${attr.type}(${valJoin}) ${attr.nullable}`;
+        }
+        if (attr["size"]) {
+            return `\`${attr.name}\` ${attr.type}(${attr["size"]}) ${attr.nullable}`;
+        }
+        return `\`${attr.name}\` ${attr.type} ${attr.nullable}`;
+    }).join(", ");
+    return `CREATE TABLE \`MQP\`.\`${name}\` (${attrString}${pkString})`;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================================================
 const DRAFT_INFO_QUERY = async () => {
     const draftPlayers = await getAllDraft();
     let playerCount = 0;
