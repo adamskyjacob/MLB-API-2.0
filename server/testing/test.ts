@@ -1,4 +1,4 @@
-import { TestParameter, validatePlayerIDParameters, validateYearParameters, colorStringParameters, splitArrayParameters, createTableQueryParameters } from "./testparams";
+import { TestParameter, validatePlayerIDParameters, validateYearParameters, colorStringParameters, splitArrayParameters } from "./testparams";
 import { validatePlayerID, validateYear } from "../api/validation";
 import { colorString, splitArray } from "../api/util";
 import lodash from "lodash";

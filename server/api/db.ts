@@ -28,6 +28,11 @@ export const client = new MongoClient(uri, {
 });
 
 export const mongodb = client.db("MLB");
+const playerInfoCollection = mongodb.collection("Player_Info");
+const fieldingCollection = mongodb.collection("Fielding");
+const hittingCollection = mongodb.collection("Hitting");
+const pitchingCollection = mongodb.collection("Pitching");
+const draftColletion = mongodb.collection("Draft_Info");
 
 export async function tryInitializeDatabase() {
     const startTime = Date.now();
@@ -36,10 +41,33 @@ export async function tryInitializeDatabase() {
     await getPlayerInformation();
     await getPlayerStatistics();
     console.log(`======== FINISHED IN ${convertMillisecondsToTime(Date.now() - startTime)} ========`);
+    //getSectionalValue()
+}
+
+type SectionValue = { year: number, intl: number, first: number, second: number, rest: number };
+
+async function getSectionalValue(): Promise<SectionValue[]> {
+    let result: SectionValue[] = [];
+    for (let i = 1982; i < 2023; i++) {
+        let yearly: SectionValue = {
+            year: i,
+            intl: 0,
+            first: 0,
+            second: 0,
+            rest: 0
+        }
+
+        fieldingCollection.find().filter({
+            seasonYear: i
+        }).toArray().then((res) => {
+            console.log(res);
+        })
+    }
+    
+    return result;
 }
 
 async function getDraftInfo(): Promise<void> {
-    const draftColletion = mongodb.collection("Draft_Info");
     const draftInfoCount = await draftColletion.countDocuments();
     let draftInfoTable = [];
     if (draftInfoCount > 0) {
@@ -124,25 +152,19 @@ async function getPlayerInformation(): Promise<void> {
 }
 
 async function getPlayerStatistics(): Promise<void> {
-    const playerInfoCollection = mongodb.collection("Player_Info");
-
-    const fieldingCollection = mongodb.collection("Fielding");
-    const hittingCollection = mongodb.collection("Hitting");
-    const pitchingCollection = mongodb.collection("Pitching");
-
     const fieldingCount = await fieldingCollection.countDocuments();
     const hittingCount = await hittingCollection.countDocuments();
     const pitchingCount = await pitchingCollection.countDocuments();
 
-    if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
+/*    if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
         console.log(colorString("R", "There are already documents in all of the statistics collections. Clear the collections to re-enter data.\n"));
         return;
-    }
+    }*/
 
     let hittingTable = [], pitchingTable = [], fieldingTable = [];
 
     console.log(colorString("G", "=== Getting player statistics from MLB API ==="));
-    for (let year = 1982; year < 2023; year++) {
+    for (let year = 1982; year < 1983; year++) {
         console.log(`+ Getting player statistics from ${year}`);
         const rows = await playerInfoCollection.find({
             "mlbDebutDate": {
@@ -210,8 +232,9 @@ async function getPlayerStatistics(): Promise<void> {
                 }
             }
         }
-        console.log(hittingTable.length, pitchingTable.length, fieldingTable.length)
+        console.log(fieldingTable)
     }
+    return;
 
     if (hittingCount == 0) {
         await hittingCollection.insertMany(hittingTable);
