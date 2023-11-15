@@ -164,7 +164,7 @@ async function getPlayerStatistics(): Promise<void> {
     let hittingTable = [], pitchingTable = [], fieldingTable = [];
 
     console.log(colorString("G", "=== Getting player statistics from MLB API ==="));
-    for (let year = 1982; year < 1983; year++) {
+    for (let year = 1982; year < 2023; year++) {
         console.log(`+ Getting player statistics from ${year}`);
         const rows = await playerInfoCollection.find({
             "mlbDebutDate": {
@@ -209,7 +209,7 @@ async function getPlayerStatistics(): Promise<void> {
                     });
                 }
 
-                if ((statTypes.includes("seasonfieling") || statTypes.includes("sabermetricsfielding")) && positions && fieldingCount == 0) {
+                if ((statTypes.includes("seasonfielding") || statTypes.includes("sabermetricsfielding")) && positions && fieldingCount == 0) {
                     for (var position of positions) {
                         fieldingTable.push({
                             _id: `${player.id}-${year}-${position}`,
@@ -232,9 +232,7 @@ async function getPlayerStatistics(): Promise<void> {
                 }
             }
         }
-        console.log(fieldingTable)
     }
-    return;
 
     if (hittingCount == 0) {
         await hittingCollection.insertMany(hittingTable);
