@@ -33,6 +33,7 @@ const fieldingCollection = mongodb.collection("Fielding");
 const hittingCollection = mongodb.collection("Hitting");
 const pitchingCollection = mongodb.collection("Pitching");
 const draftColletion = mongodb.collection("Draft_Info");
+const yearlyTotals = mongodb.collection("Yearly_Totals");
 
 export async function tryInitializeDatabase() {
     const startTime = Date.now();
@@ -40,31 +41,213 @@ export async function tryInitializeDatabase() {
     await getDraftInfo();
     await getPlayerInformation();
     await getPlayerStatistics();
+    await getSectionalValue();
     console.log(`======== FINISHED IN ${convertMillisecondsToTime(Date.now() - startTime)} ========`);
-    //getSectionalValue()
+    yearlyTotals.findOne({ year: 2016 }).then(res => {
+        console.log(res)
+    })
 }
 
-type SectionValue = { year: number, intl: number, first: number, second: number, rest: number };
+type YearlyValue = { year: number, intl: SectionalValue, first: SectionalValue, second: SectionalValue, rest: SectionalValue };
 
-async function getSectionalValue(): Promise<SectionValue[]> {
-    let result: SectionValue[] = [];
+type SectionalValue = {
+    war: StatGroup,
+    uzr: StatGroup,
+    ops: StatGroup,
+    fldPct: StatGroup,
+    eraMinus: StatGroup
+}
+
+type StatGroup = {
+    sum: number,
+    plr_count: number
+}
+
+async function getSectionalValue(): Promise<void> {
+    const yearlyTotalsCount = await yearlyTotals.countDocuments()
+    if (yearlyTotalsCount > 0) {
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
+        return;
+    }
+
+    let result: YearlyValue[] = [];
     for (let i = 1982; i < 2023; i++) {
-        let yearly: SectionValue = {
+        const draftInfo = await (await draftColletion.find()).toArray();
+        let yearly: YearlyValue = {
             year: i,
-            intl: 0,
-            first: 0,
-            second: 0,
-            rest: 0
+            intl: {
+                war: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                uzr: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                ops: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                fldPct: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                eraMinus: {
+                    sum: 0,
+                    plr_count: 0
+                }
+            },
+            first: {
+                war: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                uzr: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                ops: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                fldPct: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                eraMinus: {
+                    sum: 0,
+                    plr_count: 0
+                }
+            },
+            second: {
+                war: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                uzr: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                ops: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                fldPct: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                eraMinus: {
+                    sum: 0,
+                    plr_count: 0
+                }
+            },
+            rest: {
+                war: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                uzr: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                ops: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                fldPct: {
+                    sum: 0,
+                    plr_count: 0
+                },
+                eraMinus: {
+                    sum: 0,
+                    plr_count: 0
+                }
+            }
         }
 
-        fieldingCollection.find().filter({
+        const yearlyFielding = await (await fieldingCollection.find({
             seasonYear: i
-        }).toArray().then((res) => {
-            console.log(res);
-        })
+        })).toArray();
+
+        const yearlyPitching = await (await pitchingCollection.find({
+            seasonYear: i
+        })).toArray();
+
+        const yearlyHitting = await (await hittingCollection.find({
+            seasonYear: i
+        })).toArray();
+
+        for (var doc of yearlyFielding) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            if (draftPlayer?.draftRound === '1') {
+                yearly.first.fldPct.plr_count++;
+                yearly.first.fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly.first.uzr.sum += Number(doc.uzr ?? 0);
+                yearly.first.uzr.plr_count++;
+            } else if (draftPlayer?.draftRound === '2') {
+                yearly.second.fldPct.plr_count++;
+                yearly.second.fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly.second.uzr.sum += Number(doc.uzr ?? 0);
+                yearly.second.uzr.plr_count++;
+            } else if (draftPlayer?.draftRound) {
+                yearly.rest.fldPct.plr_count++;
+                yearly.rest.fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly.rest.uzr.sum += Number(doc.uzr ?? 0);
+                yearly.rest.uzr.plr_count++;
+            } else {
+                yearly.intl.fldPct.plr_count++;
+                yearly.intl.fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly.intl.uzr.sum += Number(doc.uzr ?? 0);
+                yearly.intl.uzr.plr_count++;
+            }
+        }
+
+        for (var doc of yearlyHitting) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            if (draftPlayer?.draftRound === '1') {
+                yearly.first.ops.plr_count++;
+                yearly.first.ops.sum += Number(doc.ops ?? 0);
+                yearly.first.war.sum += Number(doc.war ?? 0);
+                yearly.first.war.plr_count++;
+            } else if (draftPlayer?.draftRound === '2') {
+                yearly.second.ops.plr_count++;
+                yearly.second.ops.sum += Number(doc.ops ?? 0);
+                yearly.second.war.sum += Number(doc.war ?? 0);
+                yearly.second.war.plr_count++;
+            } else if (draftPlayer?.draftRound) {
+                yearly.rest.ops.plr_count++;
+                yearly.rest.ops.sum += Number(doc.ops ?? 0);
+                yearly.rest.war.sum += Number(doc.war ?? 0);
+                yearly.rest.war.plr_count++;
+            } else {
+                yearly.intl.ops.plr_count++;
+                yearly.intl.ops.sum += Number(doc.ops ?? 0);
+                yearly.intl.war.sum += Number(doc.war ?? 0);
+                yearly.intl.war.plr_count++;
+            }
+        }
+
+        for (var doc of yearlyPitching) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            if (draftPlayer?.draftRound === '1') {
+                yearly.first.eraMinus.plr_count++;
+                yearly.first.eraMinus.sum += Number(doc.eraMinus ?? 0);
+            } else if (draftPlayer?.draftRound === '2') {
+                yearly.second.eraMinus.plr_count++;
+                yearly.second.eraMinus.sum += Number(doc.eraMinus ?? 0);
+            } else if (draftPlayer?.draftRound) {
+                yearly.rest.eraMinus.plr_count++;
+                yearly.rest.eraMinus.sum += Number(doc.eraMinus ?? 0);
+            } else {
+                yearly.intl.eraMinus.plr_count++;
+                yearly.intl.eraMinus.sum += Number(doc.eraMinus ?? 0);
+            }
+        }
+        result.push(yearly);
     }
-    
-    return result;
+
+    await yearlyTotals.insertMany(result);
+    console.log(colorString("G", "Inserted yearly totals from 1982 to 2023"));
 }
 
 async function getDraftInfo(): Promise<void> {
@@ -74,35 +257,32 @@ async function getDraftInfo(): Promise<void> {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data\n"));
         return;
     }
-    await getDraftInfoHelper();
 
-    async function getDraftInfoHelper() {
-        console.log(colorString("G", "=== Getting draft information from MLB API ==="));
-        let count = 0;
-        for (let year = 1982; year < 2023; year++) {
-            console.log(`+ Getting draft information from ${year}`);
-            let raw = await fetch(draftPlayers(year));
-            let draftinfo = await raw.json();
-            for (var round of draftinfo['drafts']['rounds']) {
-                let picks = round["picks"];
-                for (var player of picks) {
-                    if (player['person']) {
-                        let info: DraftPlayer = {
-                            id: player['person']['id'],
-                            draftYear: year,
-                            draftRound: player['pickRound'],
-                            draftPosition: player['pickNumber'],
-                            isPass: player['isPass']
-                        }
-                        count++;
-                        draftInfoTable.push(info);
+    console.log(colorString("G", "=== Getting draft information from MLB API ==="));
+    let count = 0;
+    for (let year = 1950; year < 2023; year++) {
+        console.log(`+ Getting draft information from ${year}`);
+        let raw = await fetch(draftPlayers(year));
+        let draftinfo = await raw.json();
+        for (var round of draftinfo['drafts']['rounds']) {
+            let picks = round["picks"];
+            for (var player of picks) {
+                if (player['person']) {
+                    let info: DraftPlayer = {
+                        id: player['person']['id'],
+                        draftYear: year,
+                        draftRound: player['pickRound'],
+                        draftPosition: player['pickNumber'],
+                        isPass: player['isPass']
                     }
+                    count++;
+                    draftInfoTable.push(info);
                 }
             }
         }
-        await draftColletion.insertMany(draftInfoTable);
-        console.log(`Added ${count} players to DRAFT_INFO table\n`);
     }
+    await draftColletion.insertMany(draftInfoTable);
+    console.log(`Added ${count} players to DRAFT_INFO table\n`);
 }
 
 async function getPlayerInformation(): Promise<void> {
@@ -156,10 +336,10 @@ async function getPlayerStatistics(): Promise<void> {
     const hittingCount = await hittingCollection.countDocuments();
     const pitchingCount = await pitchingCollection.countDocuments();
 
-/*    if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
+    if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
         console.log(colorString("R", "There are already documents in all of the statistics collections. Clear the collections to re-enter data.\n"));
         return;
-    }*/
+    }
 
     let hittingTable = [], pitchingTable = [], fieldingTable = [];
 
