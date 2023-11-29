@@ -1,6 +1,41 @@
-type BMLArray<T, N extends number, Current extends T[] > = Current['length'] extends N ? [...Current, ...T[]] : BMLArray<T, N, [...Current, T]>;
+type BMLArray<T, N extends number, Current extends T[]> = Current['length'] extends N ? [...Current, ...T[]] : BMLArray<T, N, [...Current, T]>;
 export type MLArray<T, N extends number> = BMLArray<T, N, []>;
 
+type StatGroup = {
+    sum: number,
+    plr_count: number
+}
+
+class SectionalValue {
+    war: StatGroup;
+    uzr: StatGroup;
+    ops: StatGroup;
+    fldPct: StatGroup;
+    eraMinus: StatGroup;
+
+    constructor() {
+        this.war = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.uzr = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.ops = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.fldPct = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.eraMinus = {
+            sum: 0,
+            plr_count: 0
+        }
+    }
+}
 type PlayerDraftInfo = {
     PLAYER_ID: number,
     FIRST_NAME: string,
@@ -68,5 +103,5 @@ type DraftPlayer = {
 }
 
 export {
-    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer
+    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer, StatGroup, SectionalValue
 }

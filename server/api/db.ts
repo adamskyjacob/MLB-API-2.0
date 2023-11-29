@@ -1,6 +1,6 @@
 
-import { DraftPlayer, PlayerInformation } from './types';
-import { colorString, convertMillisecondsToTime, onlyUnique, splitArray } from './util';
+import { DraftPlayer, PlayerInformation, SectionalValue } from './types';
+import { Timer, colorString, onlyUnique, splitArray } from './util';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { password } from './credentials';
 
@@ -38,49 +38,13 @@ const draftColletion = mongodb.collection("Draft_Info");
 const yearlyTotals = mongodb.collection("Yearly_Totals");
 
 export async function tryInitializeDatabase() {
-    const startTime = Date.now();
+    const timer = new Timer();
     await client.connect();
     await getDraftInfo();
     await getPlayerInformation();
     await getPlayerStatistics();
     await getSectionalValue();
-    console.log(`======== FINISHED IN ${convertMillisecondsToTime(Date.now() - startTime)} ========`);
-}
-
-type StatGroup = {
-    sum: number,
-    plr_count: number
-}
-
-class SectionalValue  {
-    war: StatGroup;
-    uzr: StatGroup;
-    ops: StatGroup;
-    fldPct: StatGroup;
-    eraMinus: StatGroup;
-
-    constructor() {
-        this.war = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.uzr = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.ops = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.fldPct = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.eraMinus = {
-            sum: 0,
-            plr_count: 0
-        }
-    }
+    console.log(`======== FINISHED IN ${timer.getElapsedTime(true)} ========`);
 }
 
 async function getSectionalValue(): Promise<void> {

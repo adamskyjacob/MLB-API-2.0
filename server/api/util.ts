@@ -2,31 +2,27 @@ export function onlyUnique(value, index, array) {
     return array.indexOf(value) === index;
 }
 
-export function convertMillisecondsToTime(milliseconds) {
-    let hours = Math.floor(milliseconds / 3600000);
-    milliseconds %= 3600000;
-    let minutes = Math.floor(milliseconds / 60000);
-    milliseconds %= 60000;
-    let seconds = Math.floor(milliseconds / 1000);
+export class Timer {
+    start: number;
 
-    let timeString = '';
-
-    if (hours > 0) {
-        timeString += hours + 'h ';
+    constructor() {
+        this.start = Date.now();
     }
 
-    if (minutes > 0 || hours > 0) {
-        timeString += minutes + 'm ';
+    public getElapsedTime(stringFormat: boolean): string | number {
+        const elapsed = Date.now() - this.start;
+        if (stringFormat) {
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            return formattedTime;
+        } else {
+            return elapsed;
+        }
     }
-
-    if (seconds > 0 || minutes > 0 || hours > 0) {
-        timeString += seconds + 's ';
-    }
-
-    timeString += milliseconds + 'ms';
-
-    return timeString.trim();
 }
+
 
 export function colorString(color: ("R" | "Y" | "G" | "B" | "P"), val: any) {
     function getString() {
