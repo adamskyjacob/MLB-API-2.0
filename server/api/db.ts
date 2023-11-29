@@ -6,6 +6,8 @@ import { password } from './credentials';
 
 const baseURL: string = "https://statsapi.mlb.com/api/v1/";
 
+const yearMax = 2024;
+
 function sabermetricsURL(playerID: number[], year: number) {
     return `${baseURL}people?personIds=${playerID.join(",")}&hydrate=stats(group=[pitching,hitting,fielding],type=[season,sabermetrics],season=${year})`;
 }
@@ -43,24 +45,42 @@ export async function tryInitializeDatabase() {
     await getPlayerStatistics();
     await getSectionalValue();
     console.log(`======== FINISHED IN ${convertMillisecondsToTime(Date.now() - startTime)} ========`);
-    yearlyTotals.findOne({ year: 2016 }).then(res => {
-        console.log(res)
-    })
-}
-
-type YearlyValue = { year: number, intl: SectionalValue, first: SectionalValue, second: SectionalValue, rest: SectionalValue };
-
-type SectionalValue = {
-    war: StatGroup,
-    uzr: StatGroup,
-    ops: StatGroup,
-    fldPct: StatGroup,
-    eraMinus: StatGroup
 }
 
 type StatGroup = {
     sum: number,
     plr_count: number
+}
+
+class SectionalValue  {
+    war: StatGroup;
+    uzr: StatGroup;
+    ops: StatGroup;
+    fldPct: StatGroup;
+    eraMinus: StatGroup;
+
+    constructor() {
+        this.war = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.uzr = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.ops = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.fldPct = {
+            sum: 0,
+            plr_count: 0
+        }
+        this.eraMinus = {
+            sum: 0,
+            plr_count: 0
+        }
+    }
 }
 
 async function getSectionalValue(): Promise<void> {
@@ -70,100 +90,14 @@ async function getSectionalValue(): Promise<void> {
         return;
     }
 
-    let result: YearlyValue[] = [];
-    for (let i = 1982; i < 2023; i++) {
+    let result: any[] = [];
+    for (let i = 1982; i < 2024; i++) {
+        console.log(`Accumulating per-round statistics for ${i}`);
         const draftInfo = await (await draftColletion.find()).toArray();
-        let yearly: YearlyValue = {
+        let yearly = {
             year: i,
-            intl: {
-                war: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                uzr: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                ops: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                fldPct: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                eraMinus: {
-                    sum: 0,
-                    plr_count: 0
-                }
-            },
-            first: {
-                war: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                uzr: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                ops: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                fldPct: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                eraMinus: {
-                    sum: 0,
-                    plr_count: 0
-                }
-            },
-            second: {
-                war: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                uzr: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                ops: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                fldPct: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                eraMinus: {
-                    sum: 0,
-                    plr_count: 0
-                }
-            },
-            rest: {
-                war: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                uzr: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                ops: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                fldPct: {
-                    sum: 0,
-                    plr_count: 0
-                },
-                eraMinus: {
-                    sum: 0,
-                    plr_count: 0
-                }
-            }
-        }
+            intl: new SectionalValue()
+        };
 
         const yearlyFielding = await (await fieldingCollection.find({
             seasonYear: i
@@ -179,75 +113,55 @@ async function getSectionalValue(): Promise<void> {
 
         for (var doc of yearlyFielding) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound === '1') {
-                yearly.first.fldPct.plr_count++;
-                yearly.first.fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly.first.uzr.sum += Number(doc.uzr ?? 0);
-                yearly.first.uzr.plr_count++;
-            } else if (draftPlayer?.draftRound === '2') {
-                yearly.second.fldPct.plr_count++;
-                yearly.second.fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly.second.uzr.sum += Number(doc.uzr ?? 0);
-                yearly.second.uzr.plr_count++;
-            } else if (draftPlayer?.draftRound) {
-                yearly.rest.fldPct.plr_count++;
-                yearly.rest.fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly.rest.uzr.sum += Number(doc.uzr ?? 0);
-                yearly.rest.uzr.plr_count++;
+            if (draftPlayer?.draftRound) {
+                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+                yearly[draftPlayer?.draftRound].fldPct.plr_count++;
+                yearly[draftPlayer?.draftRound].fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly[draftPlayer?.draftRound].uzr.sum += Number(doc.uzr ?? 0);
+                yearly[draftPlayer?.draftRound].uzr.plr_count++;
             } else {
-                yearly.intl.fldPct.plr_count++;
-                yearly.intl.fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly.intl.uzr.sum += Number(doc.uzr ?? 0);
-                yearly.intl.uzr.plr_count++;
+                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
+                yearly['intl'].fldPct.plr_count++;
+                yearly['intl'].fldPct.sum += Number(doc.fldPct ?? 0);
+                yearly['intl'].uzr.sum += Number(doc.uzr ?? 0);
+                yearly['intl'].uzr.plr_count++;
             }
         }
 
         for (var doc of yearlyHitting) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound === '1') {
-                yearly.first.ops.plr_count++;
-                yearly.first.ops.sum += Number(doc.ops ?? 0);
-                yearly.first.war.sum += Number(doc.war ?? 0);
-                yearly.first.war.plr_count++;
-            } else if (draftPlayer?.draftRound === '2') {
-                yearly.second.ops.plr_count++;
-                yearly.second.ops.sum += Number(doc.ops ?? 0);
-                yearly.second.war.sum += Number(doc.war ?? 0);
-                yearly.second.war.plr_count++;
-            } else if (draftPlayer?.draftRound) {
-                yearly.rest.ops.plr_count++;
-                yearly.rest.ops.sum += Number(doc.ops ?? 0);
-                yearly.rest.war.sum += Number(doc.war ?? 0);
-                yearly.rest.war.plr_count++;
+            if (draftPlayer?.draftRound) {
+                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+                yearly[draftPlayer?.draftRound].ops.plr_count++;
+                yearly[draftPlayer?.draftRound].ops.sum += Number(doc.ops ?? 0);
+                yearly[draftPlayer?.draftRound].war.sum += Number(doc.war ?? 0);
+                yearly[draftPlayer?.draftRound].war.plr_count++;
             } else {
-                yearly.intl.ops.plr_count++;
-                yearly.intl.ops.sum += Number(doc.ops ?? 0);
-                yearly.intl.war.sum += Number(doc.war ?? 0);
-                yearly.intl.war.plr_count++;
+                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
+                yearly['intl'].ops.plr_count++;
+                yearly['intl'].ops.sum += Number(doc.ops ?? 0);
+                yearly['intl'].war.sum += Number(doc.war ?? 0);
+                yearly['intl'].war.plr_count++;
             }
         }
 
         for (var doc of yearlyPitching) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound === '1') {
-                yearly.first.eraMinus.plr_count++;
-                yearly.first.eraMinus.sum += Number(doc.eraMinus ?? 0);
-            } else if (draftPlayer?.draftRound === '2') {
-                yearly.second.eraMinus.plr_count++;
-                yearly.second.eraMinus.sum += Number(doc.eraMinus ?? 0);
-            } else if (draftPlayer?.draftRound) {
-                yearly.rest.eraMinus.plr_count++;
-                yearly.rest.eraMinus.sum += Number(doc.eraMinus ?? 0);
+            if (draftPlayer?.draftRound) {
+                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+                yearly[draftPlayer?.draftRound].eraMinus.plr_count++;
+                yearly[draftPlayer?.draftRound].eraMinus.sum += Number(doc.eraMinus ?? 0);
             } else {
-                yearly.intl.eraMinus.plr_count++;
-                yearly.intl.eraMinus.sum += Number(doc.eraMinus ?? 0);
+                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
+                yearly['intl'].eraMinus.plr_count++;
+                yearly['intl'].eraMinus.sum += Number(doc.eraMinus ?? 0);
             }
         }
         result.push(yearly);
     }
 
     await yearlyTotals.insertMany(result);
-    console.log(colorString("G", "Inserted yearly totals from 1982 to 2023"));
+    console.log(colorString("G", "Inserted yearly totals from 1982 to 2024"));
 }
 
 async function getDraftInfo(): Promise<void> {
@@ -260,7 +174,7 @@ async function getDraftInfo(): Promise<void> {
 
     console.log(colorString("G", "=== Getting draft information from MLB API ==="));
     let count = 0;
-    for (let year = 1950; year < 2023; year++) {
+    for (let year = 1950; year < yearMax; year++) {
         console.log(`+ Getting draft information from ${year}`);
         let raw = await fetch(draftPlayers(year));
         let draftinfo = await raw.json();
@@ -299,7 +213,7 @@ async function getPlayerInformation(): Promise<void> {
     async function getPlayerInformationHelper() {
         console.log(colorString("G", "=== Getting player information from MLB API ==="));
         let count = 0;
-        for (let year = 1982; year < 2023; year++) {
+        for (let year = 1982; year < yearMax; year++) {
             console.log(`+ Getting player information from ${year}`);
             let res = await fetch(yearlyPlayers(year));
             let json = await res.json();
@@ -344,7 +258,7 @@ async function getPlayerStatistics(): Promise<void> {
     let hittingTable = [], pitchingTable = [], fieldingTable = [];
 
     console.log(colorString("G", "=== Getting player statistics from MLB API ==="));
-    for (let year = 1982; year < 2023; year++) {
+    for (let year = 1982; year < yearMax; year++) {
         console.log(`+ Getting player statistics from ${year}`);
         const rows = await playerInfoCollection.find({
             "mlbDebutDate": {
