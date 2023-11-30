@@ -1,27 +1,10 @@
 
 import { DraftPlayer, PlayerInformation, SectionalValue } from './types';
-import { Timer, colorString, onlyUnique, splitArray } from './util';
+import { Timer, colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { password } from './credentials';
 
-const baseURL: string = "https://statsapi.mlb.com/api/v1/";
-
-const yearMax = 2024;
-
-function sabermetricsURL(playerID: number[], year: number) {
-    return `${baseURL}people?personIds=${playerID.join(",")}&hydrate=stats(group=[pitching,hitting,fielding],type=[season,sabermetrics],season=${year})`;
-}
-
-function yearlyPlayers(year: number) {
-    return `${baseURL}sports/1/players?season=${year}`;
-}
-
-function draftPlayers(year: number) {
-    return `${baseURL}draft/${year}`;
-}
-
-const uri = `mongodb+srv://admin:${password}@mqp-database.3yyl9tm.mongodb.net/?retryWrites=true&w=majority`;
-export const client = new MongoClient(uri, {
+export const client = new MongoClient(`mongodb+srv://admin:${password}@mqp-database.3yyl9tm.mongodb.net/?retryWrites=true&w=majority`, {
     serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
@@ -132,7 +115,7 @@ async function getDraftInfo(): Promise<void> {
     const draftInfoCount = await draftColletion.countDocuments();
     let draftInfoTable = [];
     if (draftInfoCount > 0) {
-        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data\n"));
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
         return;
     }
 
@@ -160,7 +143,7 @@ async function getDraftInfo(): Promise<void> {
         }
     }
     await draftColletion.insertMany(draftInfoTable);
-    console.log(`Added ${count} players to DRAFT_INFO table\n`);
+    console.log(`Added ${count} players to DRAFT_INFO table.`);
 }
 
 async function getPlayerInformation(): Promise<void> {
@@ -169,7 +152,7 @@ async function getPlayerInformation(): Promise<void> {
     let playerInfoTable = [], includedIds = [];
 
     if (playerInfoCount > 0) {
-        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data\n"));
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data."));
         return;
     }
     await getPlayerInformationHelper();
@@ -205,7 +188,7 @@ async function getPlayerInformation(): Promise<void> {
             }
         }
         await playerInfoCollection.insertMany(playerInfoTable);
-        console.log(`Finished adding ${count} players into PLAYER_INFO table\n`);
+        console.log(`Finished adding ${count} players into PLAYER_INFO table.`);
     }
 }
 
@@ -215,7 +198,7 @@ async function getPlayerStatistics(): Promise<void> {
     const pitchingCount = await pitchingCollection.countDocuments();
 
     if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
-        console.log(colorString("R", "There are already documents in all of the statistics collections. Clear the collections to re-enter data.\n"));
+        console.log(colorString("R", "There are already documents in all of the statistics collections. Clear the collections to re-enter data."));
         return;
     }
 

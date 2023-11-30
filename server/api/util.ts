@@ -65,3 +65,19 @@ export function splitArray<T>(array: T[], size: number): T[][] {
     }
     return result;
 }
+
+export const baseURL: string = "https://statsapi.mlb.com/api/v1/";
+
+export const yearMax = 2024;
+
+export function sabermetricsURL(playerID: number[], year: number) {
+    return `${baseURL}people?personIds=${playerID.join(",")}&hydrate=stats(group=[pitching,hitting,fielding],type=[season,sabermetrics],season=${year})`;
+}
+
+export function yearlyPlayers(year: number) {
+    return `${baseURL}sports/1/players?season=${year}`;
+}
+
+export function draftPlayers(year: number) {
+    return `${baseURL}draft/${year}`;
+}
