@@ -3,7 +3,7 @@
  *   Start off cumulative instead of per year and get percentages of yearly performance
 */
 
-import { DraftPlayer, PlayerInformation, SectionalValue, Timer } from './types';
+import { DraftPlayer, PlayerInformation, RoundEntry, SectionalValue, StatGroup, Timer } from './types';
 import { colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { connectionUrl } from './credentials';
@@ -23,7 +23,7 @@ const hittingCollection = mongodb.collection("Hitting");
 const pitchingCollection = mongodb.collection("Pitching");
 const draftColletion = mongodb.collection("Draft_Info");
 const yearlyTotalsCollection = mongodb.collection("Yearly_Totals");
-const yearlyPctsCollection = mongodb.collection("Yearly_Percentages");
+const perRoundStatPercentCollection = mongodb.collection("Per_Round_Stat_Percent");
 
 export async function tryInitializeDatabase() {
     const timer = new Timer();
@@ -31,58 +31,96 @@ export async function tryInitializeDatabase() {
     await getDraftInfo();
     await getPlayerInformation();
     await getPlayerStatistics();
-    await getSectionalValue();
+    await getYearlyTotals();
     await calculateYearlyPercentages();
     console.log(`======== FINISHED IN ${timer.getElapsedTime(true)} ========`);
 }
 
 async function calculateYearlyPercentages(): Promise<void> {
-    const yearlyPctsCount = await yearlyPctsCollection.countDocuments();
-    if (yearlyPctsCount > 0) {
+    const perRoundStatPercentCount = await perRoundStatPercentCollection.countDocuments();
+    if (perRoundStatPercentCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
         return;
     }
 
-    let statTotals = { uzr: 0, war: 0, ops: 0, fldPct: 0, eraMinus: 0 }
-
-    let rounds: Map<string, {
-        war: number,
-        uzr: number,
-        ops: number,
-        fldPct: number,
-        eraMinus: number
+    let map: Map<string, {
+        war: StatGroup,
+        uzr: StatGroup,
+        ops: StatGroup,
+        fldPct: StatGroup,
+        eraMinus: StatGroup
     }> = new Map();
 
-    for (let i = 2019; i < 2020; i++) {
-        console.log(`+ Calculating yearly total percentages from ${i}`);
-        const yearlyTotals = await yearlyTotalsCollection.find({ year: i }).toArray();
-        for (let year of yearlyTotals) {
-            for (let entry of Object.entries(year)) {
-                if (["_id", "year"].includes(entry[0])) {
-                    continue;
-                }
+    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal] = [0, 0, 0, 0, 0];
 
-                const [round, yearStats] = [...entry];
-                console.log(round, yearStats);
-                if (rounds.has(round)) {
-                    const stats = rounds.get(round);
-                    rounds.set(round, {
-                        uzr: stats.uzr + yearStats.uzr,
-                        ops: stats.ops + yearStats.ops,
-                        war: stats.war + yearStats.war,
-                        fldPct: stats.fldPct + yearStats.fldPct,
-                        eraMinus: stats.eraMinus + yearStats.eraMinus,
-                    })
-                } else {
-                    rounds.set(round, yearStats);
-                }
+    for (let i = 2000; i < yearMax; i++) {
+        console.log(`+ Calculating yearly total percentages from ${i}`);
+        const yearlyTotals = (await yearlyTotalsCollection.find({ year: i }).toArray())[0];
+        for (let entry of Object.entries(yearlyTotals)) {
+            if (["_id", "year"].includes(entry[0])) {
+                continue;
+            }
+
+            warTotal += entry[1]['war']['sum'];
+            uzrTotal += entry[1]['uzr']['sum'];
+            opsTotal += entry[1]['ops']['sum'];
+            fldPctTotal += entry[1]['fldPct']['sum'];
+            eraMinusTotal += entry[1]['eraMinus']['sum'];
+
+            if (map.has(entry[0])) {
+                const prev = map.get(entry[0]);
+                map.set(entry[0], {
+                    war: {
+                        sum: prev.war.sum + entry[1]['war']['sum'],
+                        plr_count: prev.war.plr_count + entry[1]['war']['plr_count'],
+                    },
+                    uzr: {
+                        sum: prev.uzr.sum + entry[1]['uzr']['sum'],
+                        plr_count: prev.uzr.plr_count + entry[1]['uzr']['plr_count'],
+                    },
+                    ops: {
+                        sum: prev.ops.sum + entry[1]['ops']['sum'],
+                        plr_count: prev.ops.plr_count + entry[1]['ops']['plr_count'],
+                    },
+                    fldPct: {
+                        sum: prev.fldPct.sum + entry[1]['fldPct']['sum'],
+                        plr_count: prev.fldPct.plr_count + entry[1]['fldPct']['plr_count'],
+                    },
+                    eraMinus: {
+                        sum: prev.eraMinus.sum + entry[1]['eraMinus']['sum'],
+                        plr_count: prev.eraMinus.plr_count + entry[1]['eraMinus']['plr_count'],
+                    },
+                });
+            } else {
+                map.set(entry[0], entry[1]);
             }
         }
     }
-    console.log(rounds);
+
+    let percentByRoundTable: RoundEntry[] = [];
+    for (let [key, value] of map.entries()) {
+        let round: RoundEntry = {
+            round: key,
+            stats: {
+                war: value.war.sum / warTotal,
+                uzr: value.uzr.sum / uzrTotal,
+                ops: value.ops.sum / opsTotal,
+                fldPct: value.fldPct.sum / fldPctTotal,
+                eraMinus: value.eraMinus.sum / eraMinusTotal
+            }
+        }
+        percentByRoundTable.push(round);
+    }
+
+    let warpercent = 0;
+    for (var obj of percentByRoundTable) {
+        warpercent += obj.stats.eraMinus;
+    }
+    await perRoundStatPercentCollection.insertMany(percentByRoundTable);
+    console.log(colorString("G", "Inserted per-round stat percentages (includes all stats from 2000 to 2023)"));
 }
 
-async function getSectionalValue(): Promise<void> {
+async function getYearlyTotals(): Promise<void> {
     const yearlyTotalsCount = await yearlyTotalsCollection.countDocuments();
     if (yearlyTotalsCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));

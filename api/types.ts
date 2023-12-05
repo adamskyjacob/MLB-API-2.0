@@ -1,6 +1,17 @@
 type BMLArray<T, N extends number, Current extends T[]> = Current['length'] extends N ? [...Current, ...T[]] : BMLArray<T, N, [...Current, T]>;
 export type MLArray<T, N extends number> = BMLArray<T, N, []>;
 
+type RoundEntry = {
+    round: string,
+    stats: {
+        war: number,
+        uzr: number,
+        ops: number,
+        fldPct: number,
+        eraMinus: number
+    }
+};
+
 type StatGroup = {
     sum: number,
     plr_count: number
@@ -127,5 +138,5 @@ type DraftPlayer = {
 }
 
 export {
-    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer, StatGroup, SectionalValue, Timer
+    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer, StatGroup, SectionalValue, Timer, RoundEntry
 }
