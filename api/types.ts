@@ -36,6 +36,28 @@ class SectionalValue {
         }
     }
 }
+
+class Timer {
+    start: number;
+
+    constructor() {
+        this.start = Date.now();
+    }
+
+    public getElapsedTime(stringFormat: boolean): string | number {
+        const elapsed = Date.now() - this.start;
+        if (stringFormat) {
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            return formattedTime;
+        } else {
+            return elapsed;
+        }
+    }
+}
+
 type PlayerDraftInfo = {
     PLAYER_ID: number,
     FIRST_NAME: string,
@@ -99,9 +121,11 @@ type DraftPlayer = {
     draftYear: number,
     draftRound: string,
     draftPosition: number,
-    isPass: boolean
+    isPass: boolean,
+    signingBonus: number,
+    school: "HS" | "UNI"
 }
 
 export {
-    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer, StatGroup, SectionalValue
+    PlayerDraftInfo, SQLBasic, SQLEnum, SQLBasicType, SQLType, SQLVarType, SQLTypeArray, PlayerInformation, StatisticsPlayer, DraftPlayer, StatGroup, SectionalValue, Timer
 }

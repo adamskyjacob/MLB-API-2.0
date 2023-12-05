@@ -2,28 +2,6 @@ export function onlyUnique(value, index, array) {
     return array.indexOf(value) === index;
 }
 
-export class Timer {
-    start: number;
-
-    constructor() {
-        this.start = Date.now();
-    }
-
-    public getElapsedTime(stringFormat: boolean): string | number {
-        const elapsed = Date.now() - this.start;
-        if (stringFormat) {
-            const hours = Math.floor(elapsed / 3600000);
-            const minutes = Math.floor((elapsed % 3600000) / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            return formattedTime;
-        } else {
-            return elapsed;
-        }
-    }
-}
-
-
 export function colorString(color: ("R" | "Y" | "G" | "B" | "P"), val: any) {
     function getString() {
         return (val instanceof Array) ? JSON.stringify(val) : val;

@@ -1,10 +1,14 @@
 
-import { DraftPlayer, PlayerInformation, SectionalValue } from './types';
-import { Timer, colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
-import { MongoClient, ServerApiVersion } from 'mongodb';
-import { password } from './credentials';
+/**
+ *   Start off cumulative instead of per year and get percentages of yearly performance
+*/
 
-export const client = new MongoClient(`mongodb+srv://admin:${password}@mqp-database.3yyl9tm.mongodb.net/?retryWrites=true&w=majority`, {
+import { DraftPlayer, PlayerInformation, SectionalValue, Timer } from './types';
+import { colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
+import { MongoClient, ServerApiVersion } from 'mongodb';
+import { connectionUrl } from './credentials';
+
+export const client = new MongoClient(connectionUrl, {
     serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
@@ -18,7 +22,8 @@ const fieldingCollection = mongodb.collection("Fielding");
 const hittingCollection = mongodb.collection("Hitting");
 const pitchingCollection = mongodb.collection("Pitching");
 const draftColletion = mongodb.collection("Draft_Info");
-const yearlyTotals = mongodb.collection("Yearly_Totals");
+const yearlyTotalsCollection = mongodb.collection("Yearly_Totals");
+const yearlyPctsCollection = mongodb.collection("Yearly_Percentages");
 
 export async function tryInitializeDatabase() {
     const timer = new Timer();
@@ -27,87 +32,112 @@ export async function tryInitializeDatabase() {
     await getPlayerInformation();
     await getPlayerStatistics();
     await getSectionalValue();
+    await calculateYearlyPercentages();
     console.log(`======== FINISHED IN ${timer.getElapsedTime(true)} ========`);
 }
 
+async function calculateYearlyPercentages(): Promise<void> {
+    const yearlyPctsCount = await yearlyPctsCollection.countDocuments();
+    if (yearlyPctsCount > 0) {
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
+        return;
+    }
+
+    let statTotals = { uzr: 0, war: 0, ops: 0, fldPct: 0, eraMinus: 0 }
+
+    let rounds: Map<string, {
+        war: number,
+        uzr: number,
+        ops: number,
+        fldPct: number,
+        eraMinus: number
+    }> = new Map();
+
+    for (let i = 2019; i < 2020; i++) {
+        console.log(`+ Calculating yearly total percentages from ${i}`);
+        const yearlyTotals = await yearlyTotalsCollection.find({ year: i }).toArray();
+        for (let year of yearlyTotals) {
+            for (let entry of Object.entries(year)) {
+                if (["_id", "year"].includes(entry[0])) {
+                    continue;
+                }
+
+                const [round, yearStats] = [...entry];
+                console.log(round, yearStats);
+                if (rounds.has(round)) {
+                    const stats = rounds.get(round);
+                    rounds.set(round, {
+                        uzr: stats.uzr + yearStats.uzr,
+                        ops: stats.ops + yearStats.ops,
+                        war: stats.war + yearStats.war,
+                        fldPct: stats.fldPct + yearStats.fldPct,
+                        eraMinus: stats.eraMinus + yearStats.eraMinus,
+                    })
+                } else {
+                    rounds.set(round, yearStats);
+                }
+            }
+        }
+    }
+    console.log(rounds);
+}
+
 async function getSectionalValue(): Promise<void> {
-    const yearlyTotalsCount = await yearlyTotals.countDocuments()
+    const yearlyTotalsCount = await yearlyTotalsCollection.countDocuments();
     if (yearlyTotalsCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
         return;
     }
 
     let result: any[] = [];
-    for (let i = 1982; i < 2024; i++) {
-        console.log(`Accumulating per-round statistics for ${i}`);
+    for (let i = 2000; i < yearMax; i++) {
+        console.log(`+ Accumulating per-round statistics from ${i}`);
         const draftInfo = await (await draftColletion.find()).toArray();
         let yearly = {
             year: i,
             intl: new SectionalValue()
         };
 
-        const yearlyFielding = await (await fieldingCollection.find({
-            seasonYear: i
-        })).toArray();
-
-        const yearlyPitching = await (await pitchingCollection.find({
-            seasonYear: i
-        })).toArray();
-
-        const yearlyHitting = await (await hittingCollection.find({
-            seasonYear: i
-        })).toArray();
+        const [yearlyFielding, yearlyPitching, yearlyHitting] = await Promise.all([
+            fieldingCollection.find({ seasonYear: i }).toArray(),
+            pitchingCollection.find({ seasonYear: i }).toArray(),
+            hittingCollection.find({ seasonYear: i }).toArray(),
+        ]);
 
         for (var doc of yearlyFielding) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound) {
-                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
-                yearly[draftPlayer?.draftRound].fldPct.plr_count++;
-                yearly[draftPlayer?.draftRound].fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly[draftPlayer?.draftRound].uzr.sum += Number(doc.uzr ?? 0);
-                yearly[draftPlayer?.draftRound].uzr.plr_count++;
-            } else {
-                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
-                yearly['intl'].fldPct.plr_count++;
-                yearly['intl'].fldPct.sum += Number(doc.fldPct ?? 0);
-                yearly['intl'].uzr.sum += Number(doc.uzr ?? 0);
-                yearly['intl'].uzr.plr_count++;
-            }
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].fldPct.plr_count++;
+            yearly[key].fldPct.sum += Number(doc.fldPct ?? 0);
+            yearly[key].uzr.sum += Number(doc.uzr ?? 0);
+            yearly[key].uzr.plr_count++;
         }
 
         for (var doc of yearlyHitting) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound) {
-                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
-                yearly[draftPlayer?.draftRound].ops.plr_count++;
-                yearly[draftPlayer?.draftRound].ops.sum += Number(doc.ops ?? 0);
-                yearly[draftPlayer?.draftRound].war.sum += Number(doc.war ?? 0);
-                yearly[draftPlayer?.draftRound].war.plr_count++;
-            } else {
-                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
-                yearly['intl'].ops.plr_count++;
-                yearly['intl'].ops.sum += Number(doc.ops ?? 0);
-                yearly['intl'].war.sum += Number(doc.war ?? 0);
-                yearly['intl'].war.plr_count++;
-            }
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].ops.plr_count++;
+            yearly[key].ops.sum += Number(doc.ops ?? 0);
+            yearly[key].war.sum += Number(doc.war ?? 0);
+            yearly[key].war.plr_count++;
         }
 
         for (var doc of yearlyPitching) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
-            if (draftPlayer?.draftRound) {
-                yearly[draftPlayer?.draftRound] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
-                yearly[draftPlayer?.draftRound].eraMinus.plr_count++;
-                yearly[draftPlayer?.draftRound].eraMinus.sum += Number(doc.eraMinus ?? 0);
-            } else {
-                yearly['intl'] = yearly['intl'] ?? new SectionalValue();
-                yearly['intl'].eraMinus.plr_count++;
-                yearly['intl'].eraMinus.sum += Number(doc.eraMinus ?? 0);
-            }
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].eraMinus.plr_count++;
+            yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0);
         }
         result.push(yearly);
     }
 
-    await yearlyTotals.insertMany(result);
+    await yearlyTotalsCollection.insertMany(result);
     console.log(colorString("G", "Inserted yearly totals from 1982 to 2024"));
 }
 
@@ -120,34 +150,34 @@ async function getDraftInfo(): Promise<void> {
     }
 
     console.log(colorString("G", "=== Getting draft information from MLB API ==="));
-    let count = 0;
-    for (let year = 1950; year < yearMax; year++) {
+    for (let year = 1980; year < yearMax; year++) {
         console.log(`+ Getting draft information from ${year}`);
         let raw = await fetch(draftPlayers(year));
         let draftinfo = await raw.json();
         for (var round of draftinfo['drafts']['rounds']) {
             let picks = round["picks"];
             for (var player of picks) {
-                if (player['person']) {
+                if (player['person'] && player['isPass'] === "false") {
                     let info: DraftPlayer = {
                         id: player['person']['id'],
-                        draftYear: year,
+                        draftYear: Number(player['year']),
                         draftRound: player['pickRound'],
                         draftPosition: player['pickNumber'],
-                        isPass: player['isPass']
+                        isPass: player['isPass'],
+                        signingBonus: player['signingBonus'],
+                        school: player['school'].substring(0, 2) === "HS" ? "HS" : "UNI"
                     }
-                    count++;
                     draftInfoTable.push(info);
                 }
             }
         }
     }
+
     await draftColletion.insertMany(draftInfoTable);
-    console.log(`Added ${count} players to DRAFT_INFO table.`);
+    console.log(`Added ${draftInfoTable.length} players to DRAFT_INFO table.`);
 }
 
 async function getPlayerInformation(): Promise<void> {
-    const playerInfoCollection = mongodb.collection("Player_Info");
     const playerInfoCount = await playerInfoCollection.countDocuments();
     let playerInfoTable = [], includedIds = [];
 
@@ -155,57 +185,55 @@ async function getPlayerInformation(): Promise<void> {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data."));
         return;
     }
-    await getPlayerInformationHelper();
 
-    async function getPlayerInformationHelper() {
-        console.log(colorString("G", "=== Getting player information from MLB API ==="));
-        let count = 0;
-        for (let year = 1982; year < yearMax; year++) {
-            console.log(`+ Getting player information from ${year}`);
-            let res = await fetch(yearlyPlayers(year));
-            let json = await res.json();
+    console.log(colorString("G", "=== Getting player information from MLB API ==="));
+    for (let year = 1980; year < yearMax; year++) {
+        console.log(`+ Getting player information from ${year}`);
+        let res = await fetch(yearlyPlayers(year));
+        let json = await res.json();
 
-            for (var player of json['people']) {
-                if (Number.isNaN(Number(player['mlbDebutDate']?.substring(0, 4))) || includedIds.includes(player['id'])) {
-                    continue;
-                }
-                includedIds.push(player['id'])
-                playerInfoTable.push({
-                    _id: player['id'],
-                    firstName: player['firstName'],
-                    lastName: player['lastName'],
-                    birthDate: player['birthDate'],
-                    birthCountry: player['birthCountry'],
-                    height: player['height'],
-                    weight: player['weight'],
-                    draftYear: player['draftYear'] ?? 0,
-                    mlbDebutDate: Number(player['mlbDebutDate']?.substring(0, 4)),
-                    lastPlayedDate: Number(player['lastPlayedDate']?.substring(0, 4)),
-                    batSide: player['batSide']['code'],
-                    pitchHand: player['pitchHand']['code']
-                } as PlayerInformation);
-                count++;
+        for (var player of json['people']) {
+            if (Number.isNaN(Number(player['mlbDebutDate']?.substring(0, 4))) || includedIds.includes(player['id'])) {
+                continue;
             }
+
+            includedIds.push(player['id'])
+            playerInfoTable.push({
+                _id: player['id'],
+                firstName: player['firstName'],
+                lastName: player['lastName'],
+                birthDate: player['birthDate'],
+                birthCountry: player['birthCountry'],
+                height: player['height'],
+                weight: player['weight'],
+                draftYear: player['draftYear'] ?? 0,
+                mlbDebutDate: Number(player['mlbDebutDate']?.substring(0, 4)),
+                lastPlayedDate: Number(player['lastPlayedDate']?.substring(0, 4)),
+                batSide: player['batSide']['code'],
+                pitchHand: player['pitchHand']['code']
+            } as PlayerInformation);
         }
-        await playerInfoCollection.insertMany(playerInfoTable);
-        console.log(`Finished adding ${count} players into PLAYER_INFO table.`);
     }
+
+    await playerInfoCollection.insertMany(playerInfoTable);
+    console.log(`Finished adding ${playerInfoTable.length} players into PLAYER_INFO table.`);
 }
 
 async function getPlayerStatistics(): Promise<void> {
-    const fieldingCount = await fieldingCollection.countDocuments();
-    const hittingCount = await hittingCollection.countDocuments();
-    const pitchingCount = await pitchingCollection.countDocuments();
+    let hittingTable = [], pitchingTable = [], fieldingTable = [];
+    const [fieldingCount, hittingCount, pitchingCount] = await Promise.all([
+        fieldingCollection.countDocuments(),
+        hittingCollection.countDocuments(),
+        pitchingCollection.countDocuments()
+    ]);
 
     if (fieldingCount != 0 && pitchingCount != 0 && hittingCount != 0) {
         console.log(colorString("R", "There are already documents in all of the statistics collections. Clear the collections to re-enter data."));
         return;
     }
 
-    let hittingTable = [], pitchingTable = [], fieldingTable = [];
-
     console.log(colorString("G", "=== Getting player statistics from MLB API ==="));
-    for (let year = 1982; year < yearMax; year++) {
+    for (let year = 1980; year < yearMax; year++) {
         console.log(`+ Getting player statistics from ${year}`);
         const rows = await playerInfoCollection.find({
             "mlbDebutDate": {
@@ -218,18 +246,21 @@ async function getPlayerStatistics(): Promise<void> {
         const filtered = rows.map(doc => Number(doc._id));
         const splitArr = splitArray(filtered, 640);
 
-        for (var split of splitArr) {
+        for (let split of splitArr) {
             const json = await (await fetch(sabermetricsURL(split, year))).json();
             if (!json['people']) {
                 continue;
             }
-            for (var player of json['people']) {
+
+            for (let player of json['people']) {
                 const stats = player['stats'];
                 const statTypes = stats?.map(stat => stat.type.displayName + stat.group.displayName);
                 let fielding = stats?.filter(stat => stat.type.displayName == "season" && stat.group.displayName == "fielding"), positions;
+
                 if (!stats || !fielding) {
                     continue;
                 }
+
                 if (fielding.length > 0) {
                     positions = fielding[0].splits.map(split => split.position.abbreviation).filter(onlyUnique);
                 }
@@ -287,5 +318,4 @@ async function getPlayerStatistics(): Promise<void> {
         await fieldingCollection.insertMany(fieldingTable);
         console.log(colorString("G", `Added ${fieldingTable.length} entries to Fielding collection.`));
     }
-    console.log("\n")
 }
