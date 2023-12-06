@@ -23,7 +23,9 @@ const hittingCollection = mongodb.collection("Hitting");
 const pitchingCollection = mongodb.collection("Pitching");
 const draftColletion = mongodb.collection("Draft_Info");
 const yearlyTotalsCollection = mongodb.collection("Yearly_Totals");
-const perRoundStatPercentCollection = mongodb.collection("Per_Round_Stat_Percent");
+const yearlyTotalsNormalizedCollection = mongodb.collection("Yearly_Totals_Normalized");
+const yearlyPercentagesCollection = mongodb.collection("Per_Round_Stat_Percent");
+const yearlyPercentagesNormalizedCollection = mongodb.collection("Per_Round_Stat_Percent_Normalized");
 
 export async function tryInitializeDatabase() {
     const timer = new Timer();
@@ -33,12 +35,192 @@ export async function tryInitializeDatabase() {
     await getPlayerStatistics();
     await getYearlyTotals();
     await calculateYearlyPercentages();
+    await getNormalizedYearlyTotals();
+    await calculateNormalizedYearlyPercentages();
+
+    const normalized = await yearlyPercentagesNormalizedCollection.aggregate([
+        {
+            $group: {
+                _id: null,
+                totalWar: { $sum: "$stats.war" },
+                totalUZR: { $sum: "$stats.uzr" },
+                totalOps: { $sum: "$stats.ops" },
+                totalFldPct: { $sum: "$stats.fldPct" },
+                totalEraMinus: { $sum: "$stats.eraMinus" }
+            }
+        }
+    ]).toArray();
+    const standard = await yearlyPercentagesCollection.aggregate([
+        {
+            $group: {
+                _id: null,
+                totalWar: { $sum: "$stats.war" },
+                totalUZR: { $sum: "$stats.uzr" },
+                totalOps: { $sum: "$stats.ops" },
+                totalFldPct: { $sum: "$stats.fldPct" },
+                totalEraMinus: { $sum: "$stats.eraMinus" }
+            }
+        }
+    ]).toArray();
+
+    console.log(normalized, standard);
     console.log(`======== FINISHED IN ${timer.getElapsedTime(true)} ========`);
 }
 
-async function calculateYearlyPercentages(): Promise<void> {
-    const perRoundStatPercentCount = await perRoundStatPercentCollection.countDocuments();
+async function calculateNormalizedYearlyPercentages(): Promise<void> {
+    const perRoundStatPercentCount = await yearlyPercentagesNormalizedCollection.countDocuments();
     if (perRoundStatPercentCount > 0) {
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
+        return;
+    }
+
+    let map: Map<string, {
+        war: StatGroup,
+        uzr: StatGroup,
+        ops: StatGroup,
+        fldPct: StatGroup,
+        eraMinus: StatGroup
+    }> = new Map();
+
+    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal] = [0, 0, 0, 0, 0];
+
+    for (let i = 2000; i < yearMax; i++) {
+        console.log(`+ Calculating normalized yearly total percentages from ${i}`);
+        const yearlyTotals = (await yearlyTotalsNormalizedCollection.find({ year: i }).toArray())[0];
+        for (let entry of Object.entries(yearlyTotals)) {
+            if (["_id", "year"].includes(entry[0])) {
+                continue;
+            }
+
+            warTotal += entry[1]['war']['sum'];
+            uzrTotal += entry[1]['uzr']['sum'];
+            opsTotal += entry[1]['ops']['sum'];
+            fldPctTotal += entry[1]['fldPct']['sum'];
+            eraMinusTotal += entry[1]['eraMinus']['sum'];
+
+            if (map.has(entry[0])) {
+                const prev = map.get(entry[0]);
+                map.set(entry[0], {
+                    war: {
+                        sum: prev.war.sum + entry[1]['war']['sum'],
+                        plr_count: prev.war.plr_count + entry[1]['war']['plr_count'],
+                    },
+                    uzr: {
+                        sum: prev.uzr.sum + entry[1]['uzr']['sum'],
+                        plr_count: prev.uzr.plr_count + entry[1]['uzr']['plr_count'],
+                    },
+                    ops: {
+                        sum: prev.ops.sum + entry[1]['ops']['sum'],
+                        plr_count: prev.ops.plr_count + entry[1]['ops']['plr_count'],
+                    },
+                    fldPct: {
+                        sum: prev.fldPct.sum + entry[1]['fldPct']['sum'],
+                        plr_count: prev.fldPct.plr_count + entry[1]['fldPct']['plr_count'],
+                    },
+                    eraMinus: {
+                        sum: prev.eraMinus.sum + entry[1]['eraMinus']['sum'],
+                        plr_count: prev.eraMinus.plr_count + entry[1]['eraMinus']['plr_count'],
+                    },
+                });
+            } else {
+                map.set(entry[0], entry[1]);
+            }
+        }
+    }
+
+    let percentByRoundTable: RoundEntry[] = [];
+    for (let [key, value] of map.entries()) {
+        let round: RoundEntry = {
+            round: key,
+            stats: {
+                war: value.war.sum / warTotal,
+                uzr: value.uzr.sum / uzrTotal,
+                ops: value.ops.sum / opsTotal,
+                fldPct: value.fldPct.sum / fldPctTotal,
+                eraMinus: value.eraMinus.sum / eraMinusTotal
+            }
+        }
+        percentByRoundTable.push(round);
+    }
+
+    let warpercent = 0;
+    for (var obj of percentByRoundTable) {
+        warpercent += obj.stats.eraMinus;
+    }
+    await yearlyPercentagesNormalizedCollection.insertMany(percentByRoundTable);
+    console.log(colorString("G", "Inserted normalized per-round stat percentages (includes all stats from 2000 to 2023)"));
+}
+
+async function getNormalizedYearlyTotals(): Promise<void> {
+    const normalizedYearlyTotalsCount = await yearlyTotalsNormalizedCollection.countDocuments();
+    if (normalizedYearlyTotalsCount > 0) {
+        console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
+        return;
+    }
+
+    let result: any[] = [];
+    const [uzrMin, opsMin, warMin, fldPctMin, eraMinusMin]: number[] = await Promise.all([
+        Math.abs((await fieldingCollection.find().toArray()).sort((a, b) => a.uzr - b.uzr)[0]['uzr']),
+        Math.abs((await hittingCollection.find().toArray()).sort((a, b) => a.ops - b.ops)[0]['ops']),
+        Math.abs((await hittingCollection.find().toArray()).sort((a, b) => a.war - b.war)[0]['war']),
+        Math.abs((await fieldingCollection.find().toArray()).sort((a, b) => a.fldPct - b.fldPct)[0]['fldPct']),
+        Math.abs((await pitchingCollection.find().toArray()).sort((a, b) => a.eraMinus - b.eraMinus)[0]['eraMinus'])
+    ])
+
+    for (let i = 2000; i < yearMax; i++) {
+        console.log(`+ Accumulating per-round statistics from ${i}`);
+        const draftInfo = await (await draftColletion.find()).toArray();
+        let yearly = {
+            year: i,
+            intl: new SectionalValue()
+        };
+
+        const [yearlyFielding, yearlyPitching, yearlyHitting] = await Promise.all([
+            fieldingCollection.find({ seasonYear: i }).toArray(),
+            pitchingCollection.find({ seasonYear: i }).toArray(),
+            hittingCollection.find({ seasonYear: i }).toArray(),
+        ]);
+
+        for (var doc of yearlyFielding) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].fldPct.plr_count++;
+            yearly[key].fldPct.sum += Number(doc.fldPct ?? 0) + (fldPctMin ?? 0);
+            yearly[key].uzr.sum += Number(doc.uzr ?? 0) + (uzrMin ?? 0);
+            yearly[key].uzr.plr_count++;
+        }
+
+        for (var doc of yearlyHitting) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].ops.plr_count++;
+            yearly[key].ops.sum += Number(doc.ops ?? 0) + (opsMin ?? 0);
+            yearly[key].war.plr_count++;
+            yearly[key].war.sum += Number(doc.war ?? 0) + (warMin ?? 0);
+        }
+
+        for (var doc of yearlyPitching) {
+            const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
+            const key = draftPlayer?.draftRound || "intl";
+
+            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key].eraMinus.plr_count++;
+            yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0) + (eraMinusMin ?? 0);
+        }
+        result.push(yearly);
+    }
+
+    await yearlyTotalsNormalizedCollection.insertMany(result);
+    console.log(colorString("G", "Inserted normalized yearly totals from 2000 to 2023"));
+}
+
+async function calculateYearlyPercentages(): Promise<void> {
+    const yearlyPercentagesCount = await yearlyPercentagesCollection.countDocuments();
+    if (yearlyPercentagesCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
         return;
     }
@@ -116,7 +298,7 @@ async function calculateYearlyPercentages(): Promise<void> {
     for (var obj of percentByRoundTable) {
         warpercent += obj.stats.eraMinus;
     }
-    await perRoundStatPercentCollection.insertMany(percentByRoundTable);
+    await yearlyPercentagesCollection.insertMany(percentByRoundTable);
     console.log(colorString("G", "Inserted per-round stat percentages (includes all stats from 2000 to 2023)"));
 }
 
@@ -176,7 +358,7 @@ async function getYearlyTotals(): Promise<void> {
     }
 
     await yearlyTotalsCollection.insertMany(result);
-    console.log(colorString("G", "Inserted yearly totals from 1982 to 2024"));
+    console.log(colorString("G", "Inserted yearly totals from 2000 to 2023"));
 }
 
 async function getDraftInfo(): Promise<void> {
