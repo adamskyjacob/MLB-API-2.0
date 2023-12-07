@@ -1,6 +1,7 @@
 
 /**
  *   get plate appearances for hitting, innings played for fielding and pitching
+ *   fix yearlyTotals and stats from 2023 (stats missing from 2023)
 */
 
 import { DraftPlayer, PlayerInformation, RoundEntry, SectionalValue, StatGroup, Timer } from './types';
