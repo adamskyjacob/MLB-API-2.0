@@ -133,8 +133,9 @@ type DraftPlayer = {
     draftRound: string,
     draftPosition: number,
     isPass: boolean,
+    pickValue: number,
     signingBonus: number,
-    school: "HS" | "UNI"
+    school: "HS" | "UNI" | "N/A"
 }
 
 export {

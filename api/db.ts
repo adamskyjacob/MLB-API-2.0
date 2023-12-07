@@ -1,6 +1,6 @@
 
 /**
- *   Start off cumulative instead of per year and get percentages of yearly performance
+ *   get plate appearances for hitting, innings played for fielding and pitching
 */
 
 import { DraftPlayer, PlayerInformation, RoundEntry, SectionalValue, StatGroup, Timer } from './types';
@@ -24,8 +24,8 @@ const pitchingCollection = mongodb.collection("Pitching");
 const draftColletion = mongodb.collection("Draft_Info");
 const yearlyTotalsCollection = mongodb.collection("Yearly_Totals");
 const yearlyTotalsNormalizedCollection = mongodb.collection("Yearly_Totals_Normalized");
-const yearlyPercentagesCollection = mongodb.collection("Per_Round_Stat_Percent");
-const yearlyPercentagesNormalizedCollection = mongodb.collection("Per_Round_Stat_Percent_Normalized");
+const yearlyPercentagesCollection = mongodb.collection("Yearly_Percentages");
+const yearlyPercentagesNormalizedCollection = mongodb.collection("Yearly_Percentages_Normalized");
 
 export async function tryInitializeDatabase() {
     const timer = new Timer();
@@ -33,8 +33,8 @@ export async function tryInitializeDatabase() {
     await getDraftInfo();
     await getPlayerInformation();
     await getPlayerStatistics();
-    await getYearlyTotals();
-    await calculateYearlyPercentages();
+    //await getYearlyTotals();
+    //await calculateYearlyPercentages();
     await getNormalizedYearlyTotals();
     await calculateNormalizedYearlyPercentages();
 
@@ -68,8 +68,8 @@ export async function tryInitializeDatabase() {
 }
 
 async function calculateNormalizedYearlyPercentages(): Promise<void> {
-    const perRoundStatPercentCount = await yearlyPercentagesNormalizedCollection.countDocuments();
-    if (perRoundStatPercentCount > 0) {
+    const yearlyPercentagesNormalizedCount = await yearlyPercentagesNormalizedCollection.countDocuments();
+    if (yearlyPercentagesNormalizedCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
         return;
     }
@@ -125,6 +125,9 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
             } else {
                 map.set(entry[0], entry[1]);
             }
+            if (entry[0] == "intl") {
+                console.log(entry[1]);
+            }
         }
     }
 
@@ -143,10 +146,7 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
         percentByRoundTable.push(round);
     }
 
-    let warpercent = 0;
-    for (var obj of percentByRoundTable) {
-        warpercent += obj.stats.eraMinus;
-    }
+    return;
     await yearlyPercentagesNormalizedCollection.insertMany(percentByRoundTable);
     console.log(colorString("G", "Inserted normalized per-round stat percentages (includes all stats from 2000 to 2023)"));
 }
@@ -171,8 +171,7 @@ async function getNormalizedYearlyTotals(): Promise<void> {
         console.log(`+ Accumulating per-round statistics from ${i}`);
         const draftInfo = await (await draftColletion.find()).toArray();
         let yearly = {
-            year: i,
-            intl: new SectionalValue()
+            year: i
         };
 
         const [yearlyFielding, yearlyPitching, yearlyHitting] = await Promise.all([
@@ -185,7 +184,7 @@ async function getNormalizedYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].fldPct.plr_count++;
             yearly[key].fldPct.sum += Number(doc.fldPct ?? 0) + (fldPctMin ?? 0);
             yearly[key].uzr.sum += Number(doc.uzr ?? 0) + (uzrMin ?? 0);
@@ -196,7 +195,7 @@ async function getNormalizedYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].ops.plr_count++;
             yearly[key].ops.sum += Number(doc.ops ?? 0) + (opsMin ?? 0);
             yearly[key].war.plr_count++;
@@ -207,7 +206,7 @@ async function getNormalizedYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].eraMinus.plr_count++;
             yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0) + (eraMinusMin ?? 0);
         }
@@ -314,8 +313,7 @@ async function getYearlyTotals(): Promise<void> {
         console.log(`+ Accumulating per-round statistics from ${i}`);
         const draftInfo = await (await draftColletion.find()).toArray();
         let yearly = {
-            year: i,
-            intl: new SectionalValue()
+            year: i
         };
 
         const [yearlyFielding, yearlyPitching, yearlyHitting] = await Promise.all([
@@ -328,7 +326,7 @@ async function getYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].fldPct.plr_count++;
             yearly[key].fldPct.sum += Number(doc.fldPct ?? 0);
             yearly[key].uzr.sum += Number(doc.uzr ?? 0);
@@ -339,7 +337,7 @@ async function getYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].ops.plr_count++;
             yearly[key].ops.sum += Number(doc.ops ?? 0);
             yearly[key].war.sum += Number(doc.war ?? 0);
@@ -350,7 +348,7 @@ async function getYearlyTotals(): Promise<void> {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
 
-            yearly[key] = yearly[draftPlayer?.draftRound] ?? new SectionalValue();
+            yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].eraMinus.plr_count++;
             yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0);
         }
@@ -377,15 +375,32 @@ async function getDraftInfo(): Promise<void> {
         for (var round of draftinfo['drafts']['rounds']) {
             let picks = round["picks"];
             for (var player of picks) {
-                if (player['person'] && player['isPass'] === "false") {
+                if (player['person']) {
+                    let school: "UNI" | "HS" | "N/A";
+                    const schoolName = player['school']['name'];
+                    const schoolClass = player['school']['schoolClass'];
+
+                    if (schoolClass) {
+                        school = schoolClass.substring(0, 2) === "HS" ? "HS" : "UNI";
+                    } else if (schoolName) {
+                        if (schoolName.split(" ").includes("HS")) {
+                            school = "HS";
+                        } else {
+                            school = "UNI";
+                        }
+                    } else {
+                        school = "N/A";
+                    }
+
                     let info: DraftPlayer = {
-                        id: player['person']['id'],
-                        draftYear: Number(player['year']),
-                        draftRound: player['pickRound'],
-                        draftPosition: player['pickNumber'],
-                        isPass: player['isPass'],
-                        signingBonus: player['signingBonus'],
-                        school: player['school'].substring(0, 2) === "HS" ? "HS" : "UNI"
+                        id: player['person']['id'] ?? 0,
+                        draftYear: year,
+                        draftRound: player['pickRound'] ?? 0,
+                        draftPosition: player['pickNumber'] ?? 0,
+                        isPass: player['isPass'] ?? false,
+                        signingBonus: player['signingBonus'] ?? 0,
+                        pickValue: player['pickValue'] ?? 0,
+                        school: school
                     }
                     draftInfoTable.push(info);
                 }
