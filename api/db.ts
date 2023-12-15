@@ -1,13 +1,26 @@
 
 /**
  *   get plate appearances for hitting, innings played for fielding and pitching
- *   fix yearlyTotals and stats from 2023 (stats missing from 2023)
 */
 
 import { DraftPlayer, PlayerInformation, RoundEntry, SectionalValue, StatGroup, Timer } from './types';
-import { colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
+import { calculateNumericInning, colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { connectionUrl } from './credentials';
+import readline from 'readline';
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+async function getInput(): Promise<string> {
+    return new Promise((resolve) => {
+        rl.question('Do you want to clear all collections before data entry?\n', (answer) => {
+            resolve(answer.trim().toLowerCase());
+        });
+    });
+}
 
 export const client = new MongoClient(connectionUrl, {
     serverApi: {
@@ -29,15 +42,35 @@ const yearlyPercentagesCollection = mongodb.collection("Yearly_Percentages");
 const yearlyPercentagesNormalizedCollection = mongodb.collection("Yearly_Percentages_Normalized");
 
 export async function tryInitializeDatabase() {
+    console.log(calculateNumericInning(5.2))
+    let clearDB;
+    while (clearDB === undefined || clearDB === null) {
+        const input = await getInput();
+        if (!["yes", "no"].includes(input)) {
+            console.log('Invalid response.');
+            continue;
+        }
+
+        clearDB = input === "yes" ? true : false;
+    }
+    rl.close();
+
     const timer = new Timer();
     await client.connect();
+    if (clearDB) {
+        await yearlyTotalsCollection.deleteMany({});
+        await yearlyTotalsNormalizedCollection.deleteMany({});
+        await yearlyPercentagesCollection.deleteMany({});
+        await yearlyPercentagesNormalizedCollection.deleteMany({});
+    }
+
     await getDraftInfo();
     await getPlayerInformation();
     await getPlayerStatistics();
-    //await getYearlyTotals();
-    //await calculateYearlyPercentages();
+    await getYearlyTotals();
+    await getYearlyPercentages();
     await getNormalizedYearlyTotals();
-    await calculateNormalizedYearlyPercentages();
+    await getNormalizedYearlyPercentages();
 
     const normalized = await yearlyPercentagesNormalizedCollection.aggregate([
         {
@@ -47,10 +80,14 @@ export async function tryInitializeDatabase() {
                 totalUZR: { $sum: "$stats.uzr" },
                 totalOps: { $sum: "$stats.ops" },
                 totalFldPct: { $sum: "$stats.fldPct" },
-                totalEraMinus: { $sum: "$stats.eraMinus" }
+                totalEraMinus: { $sum: "$stats.eraMinus" },
+                totalInningsPitched: { $sum: "$stats.inningsPitched" },
+                totalPlateAppearances: { $sum: "$stats.plateAppearances" },
+                totalFieldingInnings: { $sum: "$stats.fieldingInnings" }
             }
         }
     ]).toArray();
+
     const standard = await yearlyPercentagesCollection.aggregate([
         {
             $group: {
@@ -59,16 +96,21 @@ export async function tryInitializeDatabase() {
                 totalUZR: { $sum: "$stats.uzr" },
                 totalOps: { $sum: "$stats.ops" },
                 totalFldPct: { $sum: "$stats.fldPct" },
-                totalEraMinus: { $sum: "$stats.eraMinus" }
+                totalEraMinus: { $sum: "$stats.eraMinus" },
+                totalInningsPitched: { $sum: "$stats.inningsPitched" },
+                totalPlateAppearances: { $sum: "$stats.plateAppearances" },
+                totalFieldingInnings: { $sum: "$stats.fieldingInnings" }
             }
         }
     ]).toArray();
+
+    console.log(JSON.stringify(await yearlyPercentagesNormalizedCollection.find().toArray(), null, 2));
 
     console.log(normalized, standard);
     console.log(`======== FINISHED IN ${timer.getElapsedTime(true)} ========`);
 }
 
-async function calculateNormalizedYearlyPercentages(): Promise<void> {
+async function getNormalizedYearlyPercentages(): Promise<void> {
     const yearlyPercentagesNormalizedCount = await yearlyPercentagesNormalizedCollection.countDocuments();
     if (yearlyPercentagesNormalizedCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
@@ -80,10 +122,13 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
         uzr: StatGroup,
         ops: StatGroup,
         fldPct: StatGroup,
-        eraMinus: StatGroup
+        eraMinus: StatGroup,
+        inningsPitched: StatGroup,
+        plateAppearances: StatGroup,
+        fieldingInnings: StatGroup
     }> = new Map();
 
-    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal] = [0, 0, 0, 0, 0];
+    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal, inningsPitchedTotal, plateAppearancesTotal, fieldingInningsTotal] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     for (let i = 2000; i < yearMax; i++) {
         console.log(`+ Calculating normalized yearly total percentages from ${i}`);
@@ -93,11 +138,14 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
                 continue;
             }
 
-            warTotal += entry[1]['war']['sum'];
-            uzrTotal += entry[1]['uzr']['sum'];
-            opsTotal += entry[1]['ops']['sum'];
-            fldPctTotal += entry[1]['fldPct']['sum'];
-            eraMinusTotal += entry[1]['eraMinus']['sum'];
+            warTotal += Number(entry[1]['war']['sum']);
+            uzrTotal += Number(entry[1]['uzr']['sum']);
+            opsTotal += Number(entry[1]['ops']['sum']);
+            fldPctTotal += Number(entry[1]['fldPct']['sum']);
+            eraMinusTotal += Number(entry[1]['eraMinus']['sum']);
+            inningsPitchedTotal += Number(entry[1]['inningsPitched']['sum']);
+            plateAppearancesTotal += Number(entry[1]['plateAppearances']['sum']);
+            fieldingInningsTotal += Number(entry[1]['fieldingInnings']['sum']);
 
             if (map.has(entry[0])) {
                 const prev = map.get(entry[0]);
@@ -122,12 +170,21 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
                         sum: prev.eraMinus.sum + entry[1]['eraMinus']['sum'],
                         plr_count: prev.eraMinus.plr_count + entry[1]['eraMinus']['plr_count'],
                     },
+                    inningsPitched: {
+                        sum: prev.inningsPitched.sum + entry[1]['inningsPitched']['sum'],
+                        plr_count: prev.inningsPitched.plr_count + entry[1]['inningsPitched']['plr_count'],
+                    },
+                    plateAppearances: {
+                        sum: prev.plateAppearances.sum + entry[1]['plateAppearances']['sum'],
+                        plr_count: prev.plateAppearances.plr_count + entry[1]['plateAppearances']['plr_count'],
+                    },
+                    fieldingInnings: {
+                        sum: prev.fieldingInnings.sum + entry[1]['fieldingInnings']['sum'],
+                        plr_count: prev.fieldingInnings.plr_count + entry[1]['fieldingInnings']['plr_count'],
+                    },
                 });
             } else {
                 map.set(entry[0], entry[1]);
-            }
-            if (entry[0] == "intl") {
-                console.log(entry[1]);
             }
         }
     }
@@ -141,13 +198,15 @@ async function calculateNormalizedYearlyPercentages(): Promise<void> {
                 uzr: value.uzr.sum / uzrTotal,
                 ops: value.ops.sum / opsTotal,
                 fldPct: value.fldPct.sum / fldPctTotal,
-                eraMinus: value.eraMinus.sum / eraMinusTotal
+                eraMinus: value.eraMinus.sum / eraMinusTotal,
+                inningsPitched: value.inningsPitched.sum / inningsPitchedTotal,
+                plateAppearances: value.plateAppearances.sum / plateAppearancesTotal,
+                fieldingInnings: value.fieldingInnings.sum / fieldingInningsTotal
             }
         }
         percentByRoundTable.push(round);
     }
 
-    return;
     await yearlyPercentagesNormalizedCollection.insertMany(percentByRoundTable);
     console.log(colorString("G", "Inserted normalized per-round stat percentages (includes all stats from 2000 to 2023)"));
 }
@@ -184,12 +243,15 @@ async function getNormalizedYearlyTotals(): Promise<void> {
         for (var doc of yearlyFielding) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
+            const fieldingInnings = calculateNumericInning(doc.innings ?? 0);
 
             yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].fldPct.plr_count++;
             yearly[key].fldPct.sum += Number(doc.fldPct ?? 0) + (fldPctMin ?? 0);
-            yearly[key].uzr.sum += Number(doc.uzr ?? 0) + (uzrMin ?? 0);
             yearly[key].uzr.plr_count++;
+            yearly[key].uzr.sum += Number(doc.uzr ?? 0) + (uzrMin ?? 0);
+            yearly[key].fieldingInnings.plr_count++;
+            yearly[key].fieldingInnings.sum += Number(fieldingInnings);
         }
 
         for (var doc of yearlyHitting) {
@@ -201,15 +263,20 @@ async function getNormalizedYearlyTotals(): Promise<void> {
             yearly[key].ops.sum += Number(doc.ops ?? 0) + (opsMin ?? 0);
             yearly[key].war.plr_count++;
             yearly[key].war.sum += Number(doc.war ?? 0) + (warMin ?? 0);
+            yearly[key].plateAppearances.plr_count++;
+            yearly[key].plateAppearances.sum += Number(doc.plateAppearances ?? 0);
         }
 
         for (var doc of yearlyPitching) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
+            const inningsPitched = calculateNumericInning(doc.inningsPitched ?? 0);
 
             yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].eraMinus.plr_count++;
             yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0) + (eraMinusMin ?? 0);
+            yearly[key].inningsPitched.plr_count++;
+            yearly[key].inningsPitched.sum += Number(inningsPitched);
         }
         result.push(yearly);
     }
@@ -218,7 +285,7 @@ async function getNormalizedYearlyTotals(): Promise<void> {
     console.log(colorString("G", "Inserted normalized yearly totals from 2000 to 2023"));
 }
 
-async function calculateYearlyPercentages(): Promise<void> {
+async function getYearlyPercentages(): Promise<void> {
     const yearlyPercentagesCount = await yearlyPercentagesCollection.countDocuments();
     if (yearlyPercentagesCount > 0) {
         console.log(colorString("R", "There are already data entries in this collection. Clear collection to re-enter data"));
@@ -230,10 +297,13 @@ async function calculateYearlyPercentages(): Promise<void> {
         uzr: StatGroup,
         ops: StatGroup,
         fldPct: StatGroup,
-        eraMinus: StatGroup
+        eraMinus: StatGroup,
+        inningsPitched: StatGroup,
+        plateAppearances: StatGroup,
+        fieldingInnings: StatGroup
     }> = new Map();
 
-    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal] = [0, 0, 0, 0, 0];
+    let [warTotal, uzrTotal, opsTotal, fldPctTotal, eraMinusTotal, inningsPitchedTotal, plateAppearancesTotal, fieldingInningsTotal] = [0, 0, 0, 0, 0, 0, 0, 0];
 
     for (let i = 2000; i < yearMax; i++) {
         console.log(`+ Calculating yearly total percentages from ${i}`);
@@ -243,11 +313,14 @@ async function calculateYearlyPercentages(): Promise<void> {
                 continue;
             }
 
-            warTotal += entry[1]['war']['sum'];
-            uzrTotal += entry[1]['uzr']['sum'];
-            opsTotal += entry[1]['ops']['sum'];
-            fldPctTotal += entry[1]['fldPct']['sum'];
-            eraMinusTotal += entry[1]['eraMinus']['sum'];
+            warTotal += Number(entry[1]['war']['sum']);
+            uzrTotal += Number(entry[1]['uzr']['sum']);
+            opsTotal += Number(entry[1]['ops']['sum']);
+            fldPctTotal += Number(entry[1]['fldPct']['sum']);
+            eraMinusTotal += Number(entry[1]['eraMinus']['sum']);
+            inningsPitchedTotal += Number(entry[1]['inningsPitched']['sum']);
+            plateAppearancesTotal += Number(entry[1]['plateAppearances']['sum']);
+            fieldingInningsTotal += Number(entry[1]['fieldingInnings']['sum']);
 
             if (map.has(entry[0])) {
                 const prev = map.get(entry[0]);
@@ -272,6 +345,18 @@ async function calculateYearlyPercentages(): Promise<void> {
                         sum: prev.eraMinus.sum + entry[1]['eraMinus']['sum'],
                         plr_count: prev.eraMinus.plr_count + entry[1]['eraMinus']['plr_count'],
                     },
+                    inningsPitched: {
+                        sum: prev.inningsPitched.sum + entry[1]['inningsPitched']['sum'],
+                        plr_count: prev.inningsPitched.plr_count + entry[1]['inningsPitched']['plr_count'],
+                    },
+                    plateAppearances: {
+                        sum: prev.plateAppearances.sum + entry[1]['plateAppearances']['sum'],
+                        plr_count: prev.plateAppearances.plr_count + entry[1]['plateAppearances']['plr_count'],
+                    },
+                    fieldingInnings: {
+                        sum: prev.fieldingInnings.sum + entry[1]['fieldingInnings']['sum'],
+                        plr_count: prev.fieldingInnings.plr_count + entry[1]['fieldingInnings']['plr_count'],
+                    },
                 });
             } else {
                 map.set(entry[0], entry[1]);
@@ -288,7 +373,10 @@ async function calculateYearlyPercentages(): Promise<void> {
                 uzr: value.uzr.sum / uzrTotal,
                 ops: value.ops.sum / opsTotal,
                 fldPct: value.fldPct.sum / fldPctTotal,
-                eraMinus: value.eraMinus.sum / eraMinusTotal
+                eraMinus: value.eraMinus.sum / eraMinusTotal,
+                inningsPitched: value.inningsPitched.sum / inningsPitchedTotal,
+                plateAppearances: value.plateAppearances.sum / plateAppearancesTotal,
+                fieldingInnings: value.fieldingInnings.sum / fieldingInningsTotal
             }
         }
         percentByRoundTable.push(round);
@@ -326,12 +414,15 @@ async function getYearlyTotals(): Promise<void> {
         for (var doc of yearlyFielding) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
+            const fieldingInnings = calculateNumericInning(doc.innings ?? 0);
 
             yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].fldPct.plr_count++;
             yearly[key].fldPct.sum += Number(doc.fldPct ?? 0);
-            yearly[key].uzr.sum += Number(doc.uzr ?? 0);
             yearly[key].uzr.plr_count++;
+            yearly[key].uzr.sum += Number(doc.uzr ?? 0);
+            yearly[key].fieldingInnings.plr_count++;
+            yearly[key].fieldingInnings.sum += Number(fieldingInnings);
         }
 
         for (var doc of yearlyHitting) {
@@ -341,17 +432,22 @@ async function getYearlyTotals(): Promise<void> {
             yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].ops.plr_count++;
             yearly[key].ops.sum += Number(doc.ops ?? 0);
-            yearly[key].war.sum += Number(doc.war ?? 0);
             yearly[key].war.plr_count++;
+            yearly[key].war.sum += Number(doc.war ?? 0);
+            yearly[key].plateAppearances.plr_count++;
+            yearly[key].plateAppearances.sum += Number(doc.plateAppearances ?? 0);
         }
 
         for (var doc of yearlyPitching) {
             const draftPlayer = draftInfo.find(draft => draft.id === doc.id);
             const key = draftPlayer?.draftRound || "intl";
+            const inningsPitched = calculateNumericInning(doc.inningsPitched ?? 0);
 
             yearly[key] = yearly[key] ?? new SectionalValue();
             yearly[key].eraMinus.plr_count++;
             yearly[key].eraMinus.sum += Number(doc.eraMinus ?? 0);
+            yearly[key].inningsPitched.plr_count++;
+            yearly[key].inningsPitched.sum += Number(inningsPitched);
         }
         result.push(yearly);
     }
@@ -444,7 +540,7 @@ async function getPlayerInformation(): Promise<void> {
                 weight: player['weight'],
                 draftYear: player['draftYear'] ?? 0,
                 mlbDebutDate: Number(player['mlbDebutDate']?.substring(0, 4)),
-                lastPlayedDate: Number(player['lastPlayedDate']?.substring(0, 4)),
+                lastPlayedDate: Number(player['lastPlayedDate']?.substring(0, 4) ?? 10000),
                 batSide: player['batSide']['code'],
                 pitchHand: player['pitchHand']['code']
             } as PlayerInformation);
@@ -502,10 +598,11 @@ async function getPlayerStatistics(): Promise<void> {
                 }
 
                 const saberhitting = stats.filter(stat => stat.type.displayName == "sabermetrics" && stat.group.displayName == "hitting");
-                const seasonhitting = stats.filter(stat => stat.group.displayName == "hitting");
+                const seasonhitting = stats.filter(stat => stat.type.displayName == "season" && stat.group.displayName == "hitting");
                 const saberfielding = stats.filter(stat => stat.type.displayName == "sabermetrics" && stat.group.displayName == "fielding");
-                const seasonfielding = stats.filter(stat => stat.group.displayName == "fielding");
+                const seasonfielding = stats.filter(stat => stat.type.displayName == "season" && stat.group.displayName == "fielding");
                 const saberpitching = stats.filter(stat => stat.type.displayName == "sabermetrics" && stat.group.displayName == "pitching");
+                const seasonpitching = stats.filter(stat => stat.type.displayName == "season" && stat.group.displayName == "pitching");
 
                 if ((statTypes.includes("seasonhitting") || statTypes.includes("sabermetricshitting")) && hittingCount == 0) {
                     hittingTable.push({
@@ -513,7 +610,8 @@ async function getPlayerStatistics(): Promise<void> {
                         id: player.id,
                         seasonYear: year,
                         war: saberhitting[0]?.splits[0]?.stat?.war ?? 0,
-                        ops: seasonhitting[0]?.splits[0]?.stat?.ops ?? 0
+                        ops: seasonhitting[0]?.splits[0]?.stat?.ops ?? 0,
+                        plateAppearances: seasonhitting[0]?.splits[0]?.stat?.plateAppearances ?? 0
                     });
                 }
 
@@ -525,7 +623,8 @@ async function getPlayerStatistics(): Promise<void> {
                             seasonYear: year,
                             position: position,
                             uzr: saberfielding[0]?.splits[0]?.stat?.uzr ?? 0,
-                            fldPct: seasonfielding[0]?.splits[0]?.stat?.fielding ?? 0
+                            fldPct: seasonfielding[0]?.splits[0]?.stat?.fielding ?? 0,
+                            innings: seasonfielding[0]?.splits[0].stat?.innings ?? 0
                         })
                     }
                 }
@@ -535,7 +634,8 @@ async function getPlayerStatistics(): Promise<void> {
                         _id: `${player.id}-${year}`,
                         id: player.id,
                         seasonYear: year,
-                        eraMinus: saberpitching[0]?.splits[0]?.stat?.eraMinus ?? 0
+                        eraMinus: saberpitching[0]?.splits[0]?.stat?.eraMinus ?? 0,
+                        inningsPitched: seasonpitching[0]?.splits[0].stat?.inningsPitched ?? 0
                     });
                 }
             }

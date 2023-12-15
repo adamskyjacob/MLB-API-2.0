@@ -8,7 +8,10 @@ type RoundEntry = {
         uzr: number,
         ops: number,
         fldPct: number,
-        eraMinus: number
+        eraMinus: number,
+        fieldingInnings: number,
+        plateAppearances: number,
+        inningsPitched: number
     }
 };
 
@@ -23,25 +26,23 @@ class SectionalValue {
     ops: StatGroup;
     fldPct: StatGroup;
     eraMinus: StatGroup;
+    fieldingInnings: StatGroup;
+    plateAppearances: StatGroup;
+    inningsPitched: StatGroup;
 
     constructor() {
-        this.war = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.uzr = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.ops = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.fldPct = {
-            sum: 0,
-            plr_count: 0
-        }
-        this.eraMinus = {
+        this.war = this.newStatGroup();
+        this.uzr = this.newStatGroup();
+        this.ops = this.newStatGroup();
+        this.fldPct = this.newStatGroup();
+        this.eraMinus = this.newStatGroup();
+        this.fieldingInnings = this.newStatGroup();
+        this.inningsPitched = this.newStatGroup();
+        this.plateAppearances = this.newStatGroup();
+    }
+
+    private newStatGroup(): StatGroup {
+        return {
             sum: 0,
             plr_count: 0
         }

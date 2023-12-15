@@ -2,6 +2,14 @@ export function onlyUnique(value, index, array) {
     return array.indexOf(value) === index;
 }
 
+export function calculateNumericInning(num: number) {
+    if (num % 1 === 0) {
+        return num;
+    }
+    const trunc = Math.trunc(num);
+    return trunc + ((num - trunc) * (10 / 3));
+}
+
 export function colorString(color: ("R" | "Y" | "G" | "B" | "P"), val: any) {
     function getString() {
         return (val instanceof Array) ? JSON.stringify(val) : val;
