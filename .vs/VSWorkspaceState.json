@@ -1,0 +1,14 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\client",
+    "\\client\\public",
+    "\\client\\src",
+    "\\client\\src\\component",
+    "\\client\\src\\Models",
+    "\\server",
+    "\\server\\api"
+  ],
+  "SelectedNode": "\\client\\src\\Models\\RoundData.ts",
+  "PreviewInSolutionExplorer": false
+}

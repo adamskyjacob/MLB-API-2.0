@@ -1,8 +1,4 @@
 
-/**
- *   get plate appearances for hitting, innings played for fielding and pitching
-*/
-
 import { DraftPlayer, PlayerInformation, RoundEntry, SectionalValue, StatGroup, Timer } from './types';
 import { calculateNumericInning, colorString, draftPlayers, onlyUnique, sabermetricsURL, splitArray, yearMax, yearlyPlayers } from './util';
 import { MongoClient, ServerApiVersion } from 'mongodb';
@@ -41,8 +37,26 @@ const yearlyTotalsNormalizedCollection = mongodb.collection("Yearly_Totals_Norma
 const yearlyPercentagesCollection = mongodb.collection("Yearly_Percentages");
 const yearlyPercentagesNormalizedCollection = mongodb.collection("Yearly_Percentages_Normalized");
 
+export async function retrievePercentagesPerRound() {
+    return await yearlyPercentagesNormalizedCollection.find().toArray();
+}
+
+export async function retrievePercentagesPerStat() {
+    const data = await yearlyPercentagesNormalizedCollection.find().toArray();
+
+    return [
+        { statName: "war", rounds: data.map(d => { return { round: d.round, percent: d.stats.war } }) },
+        { statName: "uzr", rounds: data.map(d => { return { round: d.round, percent: d.stats.uzr } }) },
+        { statName: "ops", rounds: data.map(d => { return { round: d.round, percent: d.stats.ops } }) },
+        { statName: "fldPct", rounds: data.map(d => { return { round: d.round, percent: d.stats.fldPct } }) },
+        { statName: "eraMinus", rounds: data.map(d => { return { round: d.round, percent: d.stats.eraMinus } }) },
+        { statName: "inningsPitched", rounds: data.map(d => { return { round: d.round, percent: d.stats.inningsPitched } }) },
+        { statName: "fieldingInnings", rounds: data.map(d => { return { round: d.round, percent: d.stats.fieldingInnings } }) },
+        { statName: "plateAppearances", rounds: data.map(d => { return { round: d.round, percent: d.stats.plateAppearances } }) }
+    ]
+}
+
 export async function tryInitializeDatabase() {
-    console.log(calculateNumericInning(5.2))
     let clearDB;
     while (clearDB === undefined || clearDB === null) {
         const input = await getInput();
